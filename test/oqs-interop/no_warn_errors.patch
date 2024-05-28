@@ -1,0 +1,26 @@
+diff --git a/.CMake/compiler_opts.cmake b/.CMake/compiler_opts.cmake
+index baf593d..e4af70d 100644
+--- a/.CMake/compiler_opts.cmake
++++ b/.CMake/compiler_opts.cmake
+@@ -4,10 +4,6 @@ option(OQS_PORTABLE_BUILD "Ensure the resulting library is portable. This implie
+ option(OQS_BUILD_ONLY_LIB "Build only liboqs and do not expose build targets for tests, documentation, and pretty-printing available." OFF)
+ 
+ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+-    add_compile_options(-Werror)
+-    add_compile_options(-Wall)
+-    add_compile_options(-Wextra)
+-    add_compile_options(-Wpedantic)
+     add_compile_options(-Wno-unused-command-line-argument)
+ 
+     if(NOT OQS_BUILD_ONLY_LIB)
+@@ -55,10 +51,6 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+     endif()
+ 
+ elseif(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+-    add_compile_options(-Werror)
+-    add_compile_options(-Wall)
+-    add_compile_options(-Wextra)
+-    add_compile_options(-Wpedantic)
+     add_compile_options(-Wstrict-prototypes)
+     add_compile_options(-Wshadow)
+     add_compile_options(-Wformat=2)

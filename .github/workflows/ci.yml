@@ -1,0 +1,62 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "github" branch
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: sudo apt update && sudo apt -y install build-essential valgrind clang clang cmake libboost-tools-dev libpthread-stubs0-dev libssl-dev
+
+      - name: Build and test
+        run: |
+            mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DMLCA_NO_VALGRIND=ON .. && make && ctest
+            test/mlca_test Dilithium2 speed 50
+            test/mlca_test Dilithium3 speed 50
+            test/mlca_test Dilithium5 speed 50
+
+      - name: Build and Sanitizer and CT-Test
+        run: |
+            ldd --version
+            rm -rf build && mkdir build && cd build && cmake -DMLCA_NO_VALGRIND=OFF -DCMAKE_BUILD_TYPE=Debug .. && make
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium2 self_const
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium3 self_const
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium5 self_const
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium54_R2 self_const
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium65_R2 self_const
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium87_R2 self_const
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Kyber768 self_const
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Kyber1024 self_const
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Kyber768_R2 self_const
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Kyber1024_R2 self_const
+            rm -rf * && cmake -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=asan .. && make && ctest -j4
+            rm -rf * && cmake -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=lsan .. && make && ctest -j4
+            rm -rf * && cmake -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=msan .. && make && ctest -j4
+            rm -rf * && cmake -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=ubsan .. && make && ctest -j4
+    
+      - name: Build and OQS Interop Test
+        run: |
+            rm -rf build && mkdir build && cd build && cmake -DMLCA_OQS_INTEROP_TEST=ON .. && make && ctest -j4

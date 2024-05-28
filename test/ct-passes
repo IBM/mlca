@@ -1,0 +1,198 @@
+# Kyber R2
+{
+   Kyber: Rejection sampling in keygen to produce public "A" matrix
+   Memcheck:Cond
+   fun:krej_uniform
+   fun:kyb_gen_matrix
+   fun:kyb_keygen
+}
+{
+   Kyber: Rejection sampling in encryption to produce public "A" matrix
+   Memcheck:Cond
+   fun:krej_uniform
+   fun:kyb_gen_matrix
+   fun:indcpa_enc
+}
+# Kyber R3
+{
+   Kyber: Rejection sampling in keygen to produce public "A" matrix
+   Memcheck:Cond
+   fun:r3_krej_uniform
+   fun:r3_kyb_gen_matrix
+   fun:kyb_keygen
+}
+{
+   Kyber: Rejection sampling in encryption to produce public "A" matrix
+   Memcheck:Cond
+   fun:r3_krej_uniform
+   fun:r3_kyb_gen_matrix
+   fun:r3_indcpa_enc
+}
+# Dilithium R3
+{
+   Hint does not need to be computed in constant time
+   Memcheck:Cond
+   fun:use_s_hint
+   fun:spoly_use_hint
+   fun:spolyvec*_use_hint
+   fun:r3_sign
+}
+{
+   Hint does not need to be computed in constant time
+   Memcheck:Cond
+   fun:make_s_hint
+   fun:spoly_make_hint
+   fun:spolyvec*_make_hint
+   fun:r3_sign
+}
+{
+   Rejection sampling for s1 and s2
+   Memcheck:Cond
+   fun:rej_s_eta
+   fun:spoly_uniform_eta
+   fun:spolyvec*_uniform_eta
+   fun:dilr3_keygen
+}
+{
+   Rejection sampling for signature distribution
+   Memcheck:Cond
+   fun:spoly_chknorm
+   fun:spolyvec*_chknorm
+   fun:r3_sign
+}
+{
+   Rejection sampling for challenge
+   Memcheck:Cond
+   fun:spoly_challenge
+   fun:r3_sign
+}
+{
+   Rejection sampling for challenge
+   Memcheck:Value8
+   fun:spoly_challenge
+   fun:r3_sign
+}
+{
+   Rejection sampling for uniformly distributed public A matrix - sign
+   Memcheck:Cond
+   fun:rej_s_uniform
+   fun:spoly_uniform
+   fun:expand_smatrix_*
+   fun:r3_sign
+}
+{
+   Rejection sampling for uniformly distributed public A matrix - keygen
+   Memcheck:Cond
+   fun:rej_s_uniform
+   fun:spoly_uniform
+   fun:expand_smatrix_*
+   fun:dilr3_keygen
+}
+{
+   Verification is not done in constant time
+   Memcheck:Value8
+   ...
+   fun:r3_verify
+}
+{  
+   Verification is not done in constant time
+   Memcheck:Cond
+   ...
+   fun:r3_verify
+}
+# Dilithium R2
+{
+   Hint does not need to be computed in constant time
+   Memcheck:Cond
+   fun:use_hint
+   fun:poly_use_hint
+   fun:polyvec*_use_hint
+   fun:r2_sign
+}
+{
+   Hint does not need to be computed in constant time
+   Memcheck:Cond
+   fun:make_hint
+   fun:poly_make_hint
+   fun:polyvec*_make_hint
+   fun:r2_sign
+}
+{
+   Rejection sampling for s1 and s2
+   Memcheck:Cond
+   fun:rej_eta
+   fun:poly_uniform_eta
+   fun:dil_keygen
+}
+{
+   Rejection sampling for gamma1
+   Memcheck:Cond
+   fun:rej_gamma1m1
+   fun:poly_uniform_gamma1m1
+   fun:r2_sign
+}
+{
+   Rejection sampling for signature distribution
+   Memcheck:Cond
+   fun:poly_chknorm
+   fun:polyvec*_chknorm
+   fun:r2_sign
+}
+{
+   Rejection sampling for challenge
+   Memcheck:Cond
+   fun:poly_challenge
+   fun:r2_sign
+}
+{
+   Rejection sampling for challenge
+   Memcheck:Value8
+   fun:poly_challenge
+   fun:r2_sign
+}
+{
+   Rejection sampling for uniformly distributed public A matrix - sign
+   Memcheck:Cond
+   fun:rej_uniform
+   fun:poly_uniform
+   fun:expand_matrix_*
+   fun:r2_sign
+}
+{
+   Rejection sampling for uniformly distributed public A matrix - keygen
+   Memcheck:Cond
+   fun:rej_uniform
+   fun:poly_uniform
+   fun:expand_matrix_*
+   fun:dil_keygen
+}
+{
+   Computation of challenge does not need to computed in constant time (sec. 4.4)
+   Memcheck:Cond
+   fun:dil_challenge
+   fun:r2_sign
+}
+{
+   Computation of challenge does not need to computed in constant time (sec. 4.4)
+   Memcheck:Value8
+   fun:dil_challenge
+   fun:r2_sign
+}
+{
+   Encoding challenge does not need to be in constant time
+   Memcheck:Cond
+   fun:dil_r2sig2wire
+   fun:r2_sign
+}
+{  
+   Verification is not done in constant time
+   Memcheck:Value8
+   ...
+   fun:r2_verify
+}
+{  
+   Verification is not done in constant time
+   Memcheck:Cond
+   ...
+   fun:r2_verify
+}
