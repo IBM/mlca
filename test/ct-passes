@@ -54,9 +54,22 @@
    fun:dilr3_keygen
 }
 {
+   Rejection sampling for s1 and s2
+   Memcheck:Cond
+   fun:rej_s_eta
+   ...
+   fun:dilr3_keygen
+}
+{
    Rejection sampling for signature distribution
    Memcheck:Cond
    fun:spoly_chknorm
+   fun:spolyvec*_chknorm
+   fun:r3_sign
+}
+{
+   Rejection sampling for signature distribution
+   Memcheck:Cond
    fun:spolyvec*_chknorm
    fun:r3_sign
 }
@@ -76,9 +89,51 @@
    Rejection sampling for uniformly distributed public A matrix - sign
    Memcheck:Cond
    fun:rej_s_uniform
+   ...
+   fun:r3_sign
+}
+{
+   Rejection sampling for uniformly distributed public A matrix - sign
+   Memcheck:Cond
+   fun:rej_s_uniform
    fun:spoly_uniform
    fun:expand_smatrix_*
    fun:r3_sign
+}
+{
+   Rejection sampling for hint - sign
+   Memcheck:Cond
+   ...
+   src:mlca.c:6718 # if (rej)
+   # fun:r3_sign
+}
+{
+   Rejection sampling for hint - sign
+   Memcheck:Cond
+   ...
+   src:mlca.c:7024 # if (rej)
+   # fun:r3_sign
+}
+{
+   Rejection sampling for hint - sign
+   Memcheck:Cond
+   ...
+   src:qsc/crystals/mlca.c:6718 # if (rej)
+   # fun:r3_sign
+}
+{
+   Rejection sampling for hint - sign
+   Memcheck:Cond
+   ...
+   src:qsc/crystals/mlca.c:7024 # if (rej)
+   # fun:r3_sign
+}
+{
+   Rejection sampling for uniformly distributed public A matrix - keygen
+   Memcheck:Cond
+   fun:rej_s_uniform
+   ...
+   fun:dilr3_keygen
 }
 {
    Rejection sampling for uniformly distributed public A matrix - keygen
@@ -134,6 +189,12 @@
 {
    Rejection sampling for signature distribution
    Memcheck:Cond
+   fun:polyvec*_chknorm
+   fun:r2_sign
+}
+{
+   Rejection sampling for signature distribution
+   Memcheck:Cond
    fun:poly_chknorm
    fun:polyvec*_chknorm
    fun:r2_sign
@@ -167,6 +228,20 @@
    fun:dil_keygen
 }
 {
+   Rejection sampling for uniformly distributed public A matrix - sign
+   Memcheck:Cond
+   fun:rej_uniform
+   ...
+   fun:r2_sign
+}
+{
+   Rejection sampling for uniformly distributed public A matrix - keygen
+   Memcheck:Cond
+   fun:rej_uniform
+   ...
+   fun:dil_keygen
+}
+{
    Computation of challenge does not need to computed in constant time (sec. 4.4)
    Memcheck:Cond
    fun:dil_challenge
@@ -183,6 +258,12 @@
    Memcheck:Cond
    fun:dil_r2sig2wire
    fun:r2_sign
+}
+{
+   Encoding challenge and hint does not need to be in constant time
+   Memcheck:Cond
+   fun:dil_r3sig2wire
+   fun:r3_sign
 }
 {  
    Verification is not done in constant time

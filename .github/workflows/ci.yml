@@ -22,14 +22,14 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python 3.10
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
       - name: Install dependencies
-        run: sudo apt update && sudo apt -y install build-essential valgrind clang clang cmake libboost-tools-dev libpthread-stubs0-dev libssl-dev
+        run: sudo apt update && sudo apt -y install build-essential valgrind clang clang cmake libboost-tools-dev libpthread-stubs0-dev libssl-dev clang-15 clang
 
       - name: Build and test
         run: |
@@ -38,20 +38,10 @@ jobs:
             test/mlca_test Dilithium3 speed 50
             test/mlca_test Dilithium5 speed 50
 
-      - name: Build and Sanitizer and CT-Test
+      - name: Build and Clang sanitizers
         run: |
             ldd --version
-            rm -rf build && mkdir build && cd build && cmake -DMLCA_NO_VALGRIND=OFF -DCMAKE_BUILD_TYPE=Debug .. && make
-            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium2 self_const
-            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium3 self_const
-            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium5 self_const
-            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium54_R2 self_const
-            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium65_R2 self_const
-            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium87_R2 self_const
-            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Kyber768 self_const
-            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Kyber1024 self_const
-            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Kyber768_R2 self_const
-            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Kyber1024_R2 self_const
+            mkdir -p build && cd build
             rm -rf * && cmake -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=asan .. && make && ctest -j4
             rm -rf * && cmake -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=lsan .. && make && ctest -j4
             rm -rf * && cmake -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=msan .. && make && ctest -j4

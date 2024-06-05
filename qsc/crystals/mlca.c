@@ -466,6 +466,20 @@ static int32_t s_freeze(int32_t a)
 }
 
 #if !defined(NO_CRYSTALS_CIP) || !defined(NO_CRYSTALS_KEX) /*-- Kyber ------*/
+
+/* global vaiable used as barrier for constant-time functions */
+volatile int16_t int16_t_blocker = 0;
+volatile uint16_t unt16_t_blocker = 0;
+volatile uint8_t uint8_t_blocker = 0;
+
+//---------------------------------------
+static void kyb_cmov_int16(int16_t *r, int16_t v, uint16_t b) {
+    v ^= int16_t_blocker;
+    b ^= unt16_t_blocker;
+    b = -b;
+    *r ^= (b & ((*r) ^ v));
+}
+
 /*************************************************
  * Description: Montgomery reduction; given a 32-bit integer a, computes
  *              16-bit integer congruent to a * R^-1 mod q,
@@ -3362,17 +3376,14 @@ static void r3_kpoly_frombytes(kpoly *r, const uint8_t a[KYB_POLYBYTES])
  **************************************************/
 static void kpoly_frommsg(kpoly *r, const uint8_t msg[KYB_INDCPA_MSGBYTES])
 {
-    unsigned int i, j;
-    int16_t      mask;
-    for ( i = 0; i < KYB_N / 8; i++ ) {
-        for ( j = 0; j < 8; j++ ) {
-            r->coeffs[8 * i + j] = ((msg[i] >> j) & 1);
-        }
-    }
+  unsigned int i,j;
 
-    for (int i = 0; i < KYB_N; i++) {
-        r->coeffs[i] *= (KYB_Q + 1) / 2;
+  for( i = 0; i < KYB_N / 8; i++ ) {
+    for( j = 0; j < 8; j++ ) { 
+      r->coeffs[8*i+j] = 0;
+      kyb_cmov_int16(r->coeffs+8*i+j, ((KYB_Q + 1) / 2), (msg[i] >> j) & 1);
     }
+  }
 }
 
 /*************************************************
@@ -8599,7 +8610,7 @@ static int kyb_verify(const uint8_t *a, const uint8_t *b, size_t len)
 static void kyb_cmov(uint8_t *r, const uint8_t *x, size_t len, uint8_t b)
 {
     size_t i;
-
+    b ^= uint8_t_blocker;
     b = -b;
 
     for ( i = 0; i < len; i++ )
