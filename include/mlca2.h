@@ -166,6 +166,19 @@ MLCA_RC mlca_sig_keygen(const mlca_ctx_t *ctx, unsigned char *pk, unsigned char 
 MLCA_RC mlca_sig_sign(const mlca_ctx_t *ctx, unsigned char* sig, size_t* siglen, const unsigned char* m, size_t mlen, const unsigned char* sk);
 
 /**
+ * MLCA Signature signing - internal API for testing.
+ * 
+ * @param[in] ctx MLCA context.
+ * @param[out] sig Contains the signature.
+ * @param[in/out] siglen Contains the signature length and returns the actual signature length.
+ * @param[in] m Contains the message to be signed.
+ * @param[in] mlen Contains the length of the message to be signed.
+ * @param[in] sk Contains the private key.
+ * @return MLCA_RC Return code.
+ */
+MLCA_RC mlca_sig_sign_internal(const mlca_ctx_t *ctx, unsigned char* sig, size_t* siglen, const unsigned char* m, size_t mlen, const unsigned char* sk);
+
+/**
  * MLCA Signature verification.
  * 
  * @param[in] ctx MLCA context.
@@ -177,6 +190,19 @@ MLCA_RC mlca_sig_sign(const mlca_ctx_t *ctx, unsigned char* sig, size_t* siglen,
  * @return 0 if the signature verification failed, 1 if the signature is successfully verified.
  */
 MLCA_RC mlca_sig_verify(const mlca_ctx_t *ctx, const unsigned char *m, size_t mlen, const unsigned char *sig, size_t siglen, const unsigned char *pk);
+
+/**
+ * MLCA Signature verification - internal API for testing.
+ * 
+ * @param[in] ctx MLCA context.
+ * @param[in] m Contains the message associated with the signature.
+ * @param[in] mlen Contains the length of the message to be signed.
+ * @param[in] sig Contains the signature to be verified.
+ * @param[in] siglen Contains the signature length.
+ * @param[in] pk Contains the public key.
+ * @return 0 if the signature verification failed, 1 if the signature is successfully verified.
+ */
+MLCA_RC mlca_sig_verify_internal(const mlca_ctx_t *ctx, const unsigned char *m, size_t mlen, const unsigned char *sig, size_t siglen, const unsigned char *pk);
 
 
 // Encoding
@@ -437,10 +463,15 @@ enum mlca_algorithm_type_t {
 #define MLCA_ALGORITHM_SIG_DILITHIUM_2 "Dilithium2"
 #define MLCA_ALGORITHM_SIG_DILITHIUM_3 "Dilithium3"
 #define MLCA_ALGORITHM_SIG_DILITHIUM_5 "Dilithium5"
+#define MLCA_ALGORITHM_SIG_MLDSA_44 "ML-DSA-44"
+#define MLCA_ALGORITHM_SIG_MLDSA_65 "ML-DSA-65"
+#define MLCA_ALGORITHM_SIG_MLDSA_87 "ML-DSA-87"
 #define MLCA_ALGORITHM_KEM_KYBER_768 "Kyber768_R2"
 #define MLCA_ALGORITHM_KEM_KYBER_1024 "Kyber1024_R2"
 #define MLCA_ALGORITHM_KEM_KYBER_768_R3 "Kyber768"
 #define MLCA_ALGORITHM_KEM_KYBER_1024_R3 "Kyber1024"
+#define MLCA_ALGORITHM_KEM_MLKEM_768 "ML-KEM-768"
+#define MLCA_ALGORITHM_KEM_MLKEM_1024 "ML-KEM-1024"
 
 /**
  * Algorithm OIDs
@@ -452,10 +483,18 @@ enum mlca_algorithm_type_t {
 #define MLCA_ALGORITHM_SIG_DILITHIUM_R3_4x4_OID "\x06\x0b" "\x2b\x06\x01\x04\x01\x02\x82\x0b\x07\x04\x04"
 #define MLCA_ALGORITHM_SIG_DILITHIUM_R3_6x5_OID "\x06\x0b" "\x2b\x06\x01\x04\x01\x02\x82\x0b\x07\x06\x05"
 #define MLCA_ALGORITHM_SIG_DILITHIUM_R3_8x7_OID "\x06\x0b" "\x2b\x06\x01\x04\x01\x02\x82\x0b\x07\x08\x07"
+
+#define MLCA_ALGORITHM_SIG_MLDSA_44_OID "\x06\x09" "\x60\x86\x48\x01\x65\x03\x04\x03\x11"
+#define MLCA_ALGORITHM_SIG_MLDSA_65_OID "\x06\x09" "\x60\x86\x48\x01\x65\x03\x04\x03\x12"
+#define MLCA_ALGORITHM_SIG_MLDSA_87_OID "\x06\x09" "\x60\x86\x48\x01\x65\x03\x04\x03\x13"
+
 #define MLCA_ALGORITHM_KEM_KYBER_768_R2_OID  "\x06\x0b" "\x2b\x06\x01\x04\x01\x02\x82\x0b\x05\x03\x03"
 #define MLCA_ALGORITHM_KEM_KYBER_1024_R2_OID "\x06\x0b" "\x2b\x06\x01\x04\x01\x02\x82\x0b\x05\x04\x04"
 #define MLCA_ALGORITHM_KEM_KYBER_768_R3_OID "\x06\x0b" "\x2b\x06\x01\x04\x01\x02\x82\x0b\x08\x03\x03"
 #define MLCA_ALGORITHM_KEM_KYBER_1024_R3_OID "\x06\x0b" "\x2b\x06\x01\x04\x01\x02\x82\x0b\x08\x04\x04"
+
+#define MLCA_ALGORITHM_KEM_MLKEM_768_OID "\x06\x09" "\x60\x86\x48\x01\x65\x03\x04\x04\x02"
+#define MLCA_ALGORITHM_KEM_MLKEM_1024_OID "\x06\x09" "\x60\x86\x48\x01\x65\x03\x04\x04\x03"
 
 /**
  * Optimization levels

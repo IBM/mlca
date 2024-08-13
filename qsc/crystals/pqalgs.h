@@ -49,6 +49,9 @@ int mlca_generate(unsigned char *prv,   size_t prvbytes,
  * query with NULL 'sig'.  Returns <0 for failure.
  *
  * Key has been returned by an earlier call to pqcr_generate().
+ * 
+ * A RNG context 'rng' may be passed for randomized signing
+ * If 'rng' is NULL, deterministic signing is used if permitted.
  *
  * (algid, ibytes)  selects the key algorithm.  If (NULL, 0), a
  * key(type)-specific default is selected; see algorithm-specific definitions.
@@ -60,6 +63,17 @@ static
 int mlca_sign(unsigned char *sig,   size_t sbytes,
         const unsigned char *msg,   size_t mbytes,
         const unsigned char *prv,   size_t pbytes,
+		void *rng,
+        const unsigned char *algid, size_t ibytes) ;
+
+#if defined(USE_STATIC_MLCA)
+static
+#endif
+/**/
+int mlca_sign_internal(unsigned char *sig,   size_t sbytes,
+        const unsigned char *msg,   size_t mbytes,
+        const unsigned char *prv,   size_t pbytes,
+		void *rng,
         const unsigned char *algid, size_t ibytes) ;
 
 
@@ -81,6 +95,15 @@ static
 #endif
 /**/
 int mlca_verify(const unsigned char *sig,   size_t sbytes,
+                const unsigned char *msg,   size_t mbytes,
+                const unsigned char *pub,   size_t pbytes,
+                const unsigned char *algid, size_t ibytes) ;
+
+#if defined(USE_STATIC_MLCA)
+static
+#endif
+/**/
+int mlca_verify_internal(const unsigned char *sig,   size_t sbytes,
                 const unsigned char *msg,   size_t mbytes,
                 const unsigned char *pub,   size_t pbytes,
                 const unsigned char *algid, size_t ibytes) ;
@@ -235,6 +258,10 @@ typedef enum {
 	MLCA_ID_DIL3_R3 = 0x0365,
 	MLCA_ID_DIL5_R3 = 0x0387,
 
+	MLCA_ID_DIL_MLDSA_44 = 0x0444,
+    MLCA_ID_DIL_MLDSA_65 = 0x0465,
+    MLCA_ID_DIL_MLDSA_87 = 0x0487,
+
 		/* round 2 Kyber, NIST strength categories,
 		 * implies IBM-specified private+public key formats when
  		 * used in serialization context.
@@ -249,10 +276,14 @@ typedef enum {
 	MLCA_ID_KYB3_R3 = 0x0803,
 	MLCA_ID_KYB4_R3 = 0x0804,
 
+    MLCA_ID_KYB_MLKEM_768  = 0x0903,
+    MLCA_ID_KYB_MLKEM_1024 = 0x0904,
+
+
 		/* portability note: make sure no comma after last entries
 		 */
 
-	MLCA_ID_MAX = MLCA_ID_KYB4_R3
+	MLCA_ID_MAX = MLCA_ID_KYB_MLKEM_1024
 } MLCA_ID_t ;
 
 

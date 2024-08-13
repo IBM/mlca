@@ -54,9 +54,11 @@ struct mlca_kem_api_t {
  * Signature API structure.
  */
 struct mlca_sig_api_t {
-    int (*keypair   ) (const mlca_ctx_t *ctx, unsigned char *pk, unsigned char *sk);
-    int (*sig_sign  ) (const mlca_ctx_t *ctx, unsigned char* sig, size_t *siglen, const unsigned char* m, size_t mlen, const unsigned char* sk);
-    int (*sig_verify) (const mlca_ctx_t *ctx, const unsigned char *m, size_t mlen, const unsigned char *sig, size_t siglen, const unsigned char *pk);
+    int (*keypair            ) (const mlca_ctx_t *ctx, unsigned char *pk, unsigned char *sk);
+    int (*sig_sign           ) (const mlca_ctx_t *ctx, unsigned char* sig, size_t *siglen, const unsigned char* m, size_t mlen, const unsigned char* sk);
+    int (*sig_sign_internal  ) (const mlca_ctx_t *ctx, unsigned char* sig, size_t *siglen, const unsigned char* m, size_t mlen, const unsigned char* sk);
+    int (*sig_verify         ) (const mlca_ctx_t *ctx, const unsigned char *m, size_t mlen, const unsigned char *sig, size_t siglen, const unsigned char *pk);
+    int (*sig_verify_internal) (const mlca_ctx_t *ctx, const unsigned char *m, size_t mlen, const unsigned char *sig, size_t siglen, const unsigned char *pk);
 };
 
 
@@ -165,7 +167,7 @@ struct mlca_cpu_features_t {
 /**
  * Algorithm definitions (external)
  */
-extern const mlca_alg_t kyber_mlca_ctx[4];
-extern const mlca_alg_t dilithium_mlca_ctx[6];
+extern const mlca_alg_t kyber_mlca_ctx[6];
+extern const mlca_alg_t dilithium_mlca_ctx[9];
 
 #endif // MLCA_INT_H

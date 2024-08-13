@@ -191,6 +191,10 @@ size_t mlca_gn_oid2wire(unsigned char *wire, size_t wbytes,
 extern const mlca_encoding_t Kyber768_encoding;
 extern const mlca_encoding_t Kyber1024_encoding;
 
+extern const mlca_encoding_t Mldsa_44_encodings;
+extern const mlca_encoding_t Mldsa_65_encodings;
+extern const mlca_encoding_t Mldsa_87_encodings;
+
 extern const mlca_encoding_t Dilithium_R3_4x4_encodings;
 extern const mlca_encoding_t Dilithium_R3_6x5_encodings;
 extern const mlca_encoding_t Dilithium_R3_8x7_encodings;

@@ -60,13 +60,14 @@ int test_kem_constant(mlca_ctx_t * ctx) {
     rc = mlca_kem_keygen(ctx, pk3, sk3);
     if (rc) goto end;
 
+    MLCA_MAKE_MEM_DEFINED(pk3, pkLen);
+
     rc = mlca_kem_enc(ctx, ct, ss, pk3);
     if (rc) goto end;
 
     rc = mlca_kem_dec(ctx, ss_rec, ct, sk3);
     if ( rc ) goto end;
 
-    MLCA_MAKE_MEM_DEFINED(pk3, pkLen);
     MLCA_MAKE_MEM_DEFINED(sk3, skLen);
     MLCA_MAKE_MEM_DEFINED(ct, ctLen);
     MLCA_MAKE_MEM_DEFINED(ss, ssLen);

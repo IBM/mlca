@@ -22,7 +22,7 @@ jobs:
     strategy:
         matrix:
           gcc_config: [CTOS, CTO0, CTO1, CTO2, CTO3]
-          clang_version: [gcc, gcc-12]
+          gcc_version: [gcc, gcc-12]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -38,14 +38,18 @@ jobs:
       - name: CT-Test (clang)
         run: |
             ldd --version
-            rm -rf build && mkdir build && cd build && cmake -DCMAKE_C_COMPILER=${{ matrix.clang_version }} -DMLCA_NO_VALGRIND=OFF -DCMAKE_BUILD_TYPE=${{ matrix.clang_config }} .. && make -j
-              
+            rm -rf build && mkdir build && cd build && cmake -DCMAKE_C_COMPILER=${{ matrix.gcc_version }} -DMLCA_NO_VALGRIND=OFF -DCMAKE_BUILD_TYPE=${{ matrix.gcc_config }} .. && make -j
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test ML-DSA-44 self_const
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test ML-DSA-65 self_const
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test ML-DSA-87 self_const
             valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium2 self_const
             valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium3 self_const
             valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium5 self_const
             valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium54_R2 self_const
             valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium65_R2 self_const
             valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Dilithium87_R2 self_const
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test ML-KEM-768 self_const
+            valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test ML-KEM-1024 self_const
             valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Kyber768 self_const
             valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Kyber1024 self_const
             valgrind --tool=memcheck --gen-suppressions=all --error-exitcode=1 --suppressions=../test/ct-passes test/mlca_test Kyber768_R2 self_const

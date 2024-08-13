@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+
 /*----------------------------------------------------------------------
  *
  * Dilithium variants supported (K/L):
@@ -15,7 +16,7 @@
  * Kyber variants supported:
  *   round2 and round3
  *   Kyb III   Kyber768
- *   Kyb V     Kyber1024ss
+ *   Kyb V     Kyber1024
  *
  * define
  *    USE_STATIC_MLCA  -- make public functions static; suitable for
@@ -28,6 +29,7 @@
  *    NO_CRYSTALS_R3   -- exclude round2 versions, if appropriate
  *
  */
+
 
 #if !defined(MLCA__IMPL_H__)
 #define MLCA__IMPL_H__
@@ -47,6 +49,10 @@
 #include "pqalgs.h" /* our own prototypes */
 #if !defined(COMMON_BASE_H__)
 #define COMMON_BASE_H__ 1
+
+/* note: a minimized version used within IBM prod environments
+ * allow repeated inclusion of common-....h derivatives
+ */
 
 #if !defined(ARRAY_ELEMS)
 #define ARRAY_ELEMS(arr) (sizeof(arr) / sizeof((arr)[0]))
@@ -121,7 +127,11 @@ static __INLINE__ void MSBF4_WRITE(void *p, uint64_t v)
     pb[0] = (unsigned char)(v >> 24);
 }
 
-//--------------------------------------
+/*--------------------------------------
+ * assume this gets inlined, possibly through bswap() or equivalent
+ * recent gcc/clang and some xlc's tend to do so
+ */
+
 static __INLINE__ void *MEMSET0_STRICT(void* mem, size_t size) {
     typedef void *(*memset_t)(void *, int, size_t);
     static volatile memset_t memset_func = MEMSET;
@@ -144,6 +154,7 @@ static __INLINE__ void *MEMSET0_STRICT(void* mem, size_t size) {
 #define CRS_STATIC /**/
 #endif
 
+
 #if !defined(NO_MLCA_RANDOM)
 #include <mlca2_random.h>
 static size_t randombytes(unsigned char *r, size_t rbytes, void *rng)
@@ -151,6 +162,7 @@ static size_t randombytes(unsigned char *r, size_t rbytes, void *rng)
     return mlca_randombytes(rng, r, rbytes);
 }
 #endif
+
 
 #if 1 /*-----  delimiter: Crystals core  -----------------------------*/
 typedef enum {
@@ -179,6 +191,10 @@ static unsigned int is_special_oid(const unsigned char *oid, size_t oidb)
 #define DIL_GAMMA1 ((DIL_Q - 1) / 16)
 #define DIL_GAMMA2 (DIL_GAMMA1 / 2)
 #define DIL_ALPHA  (2 * DIL_GAMMA2)
+
+#define DIL_MLDSA_TRBYTES  64
+#define DIL_MLDSA_RNDBYTES 32
+
 /*
  * round3 equivalent, first with ref.impl-compatible signed units
  * unless otherwise noted, DIL_... constants are identical for r2 and r3
@@ -227,6 +243,10 @@ static unsigned int is_special_oid(const unsigned char *oid, size_t oidb)
 #define DIL_R3_PUB6x5_BYTES ((size_t)1952)
 #define DIL_R3_PUB8x7_BYTES ((size_t)2592)
 
+#define DIL_MLDSA_44_PUB_BYTES ((size_t)1312)
+#define DIL_MLDSA_65_PUB_BYTES ((size_t)1952)
+#define DIL_MLDSA_87_PUB_BYTES ((size_t)2592)
+
 #define DIL_BETA5x4 275
 #define DIL_BETA6x5 175
 #define DIL_BETA8x7 120
@@ -251,6 +271,10 @@ static unsigned int is_special_oid(const unsigned char *oid, size_t oidb)
 #define DIL_R3_SIGBYTES6x5 3293
 #define DIL_R3_SIGBYTES8x7 4595
 
+#define DIL_MLDSA_SIGBYTES4x4 2420
+#define DIL_MLDSA_SIGBYTES6x5 3309
+#define DIL_MLDSA_SIGBYTES8x7 4627
+
 /*
  * raw bytecounts, excl. any ASN.1/BER framing or post-appended in-band type
  * hardwired since formula contains conditionals; do not expect
@@ -270,6 +294,10 @@ static unsigned int is_special_oid(const unsigned char *oid, size_t oidb)
 #define DIL_R3_PRV6x5_BYTES ((size_t)4000)
 #define DIL_R3_PRV8x7_BYTES ((size_t)4864)
 
+#define DIL_MLDSA_PRV4x4_BYTES ((size_t)2560)
+#define DIL_MLDSA_PRV6x5_BYTES ((size_t)4032)
+#define DIL_MLDSA_PRV8x7_BYTES ((size_t)4896)
+
 /* ETA <= 3 decides */
 #define DIL_POLYETA5x4_PACKEDBYTES ((size_t)128)
 #define DIL_POLYETA6x5_PACKEDBYTES ((size_t)96)
@@ -278,6 +306,11 @@ static unsigned int is_special_oid(const unsigned char *oid, size_t oidb)
 #define DIL_R3_POLYETA4x4_PACKEDBYTES ((size_t)96)
 #define DIL_R3_POLYETA6x5_PACKEDBYTES ((size_t)128)
 #define DIL_R3_POLYETA8x7_PACKEDBYTES ((size_t)96)
+
+#define DIL_MLDSA_44_CTILDEBYTES  ((size_t)32)
+#define DIL_MLDSA_65_CTILDEBYTES  ((size_t)48)
+#define DIL_MLDSA_87_CTILDEBYTES  ((size_t)64)
+#define DIL_MLDSA_MAX_CTILDEBYTES DIL_MLDSA_87_CTILDEBYTES
 
 #define DIL_VECT_MAX ((unsigned int)8) /* MAX(K, L) for any config */
 #define KYB_VECT_MAX ((unsigned int)4) /* MAX(K) for any config */
@@ -639,6 +672,8 @@ static const uint32_t dil_zetas_inv[DIL_N] = {
     3859737, 2118186, 2108549, 5760665, 1119584, 549488,  4794489, 1079900, 7356305, 5654953,
     5700314, 5268920, 2884855, 5260684, 2091905, 359251,  6026966, 6554070, 7913949, 876248,
     777960,  8143293, 518909,  2608894, 8354570};
+
+static const uint8_t mldsa_ds_pure[2] = { 0x0, 0x0 };
 
 /*************************************************
  * Description: Forward NTT, in-place. No modular reduction is performed after
@@ -1156,6 +1191,25 @@ static size_t dil_r3k2polyeta_bytes(unsigned int k)
     case 8: return 96; /* ETA=2 cases */
 
     case 6: return 128; /* ETA=4 */
+
+    default: return 0;
+    }
+}
+
+/*--------------------------------------
+ * expanded form of POLYETA_PACKEDBYTES, replacing ref.impl. #define
+ * returns 0 for unknown param sets (which SNH)
+ *
+ * assume inlining/const-propagation on any reasonable platform
+ */
+ATTR_CONST__
+/**/
+static size_t dil_mldsa_ctilbytes(unsigned int k)
+{
+    switch ( k ) {
+    case 4: return DIL_MLDSA_44_CTILDEBYTES;
+    case 6: return DIL_MLDSA_65_CTILDEBYTES;
+    case 8: return DIL_MLDSA_87_CTILDEBYTES;
 
     default: return 0;
     }
@@ -2809,6 +2863,53 @@ static void spoly_challenge(spoly *c, const uint8_t seed[DIL_SEEDBYTES], unsigne
 }
 
 /*************************************************
+ * Description: Implementation of H. Samples polynomial with TAU nonzero
+ *              coefficients in {-1,1} using the output stream of
+ *              SHAKE256(seed).
+ * Arguments:   - spoly *c: pointer to output polynomial
+ *              - const uint8_t seed[]: byte array containing seed of length ctildebytes
+ **************************************************/
+static void ml_spoly_challenge(spoly *c, const uint8_t *seed, unsigned int dil_k)
+{
+    uint8_t      buf[SHAKE256_RATE];
+    unsigned int i, b, pos;
+    Keccak_state state;
+    uint64_t     signs;
+    size_t       ctilbytes = dil_mldsa_ctilbytes(dil_k);
+
+    shake256_init(&state);
+    shake256_absorb(&state, seed, ctilbytes);
+    shake256_finalize(&state);
+    shake256_squeezeblocks(buf, 1, &state);
+
+    signs = 0;
+    for ( i = 0; i < 8; ++i )
+        signs |= (uint64_t)buf[i] << 8 * i;
+
+    pos = 8;
+
+    for ( i = 0; i < DIL_N; ++i )
+        c->coeffs[i] = 0;
+
+    for ( i = DIL_N - dilr3_k2tau(dil_k); i < DIL_N; ++i ) {
+        do {
+            if ( pos >= SHAKE256_RATE ) {
+                shake256_squeezeblocks(buf, 1, &state);
+                pos = 0;
+            }
+
+            b = buf[pos++];
+        } while ( b > i );
+
+        c->coeffs[i] = c->coeffs[b];
+        c->coeffs[b] = 1 - 2 * (signs & 1);
+
+        signs >>= 1;
+    }
+    stream256_wipe(&state);
+}
+
+/*************************************************
  * Description: Bit-pack polynomial with coefficients in [-ETA,ETA].
  * Arguments:   - uint8_t *r: pointer to output byte array with at least
  *                            POLYETA_PACKEDBYTES bytes
@@ -3376,14 +3477,14 @@ static void r3_kpoly_frombytes(kpoly *r, const uint8_t a[KYB_POLYBYTES])
  **************************************************/
 static void kpoly_frommsg(kpoly *r, const uint8_t msg[KYB_INDCPA_MSGBYTES])
 {
-  unsigned int i,j;
+    unsigned int i,j;
 
-  for( i = 0; i < KYB_N / 8; i++ ) {
-    for( j = 0; j < 8; j++ ) { 
-      r->coeffs[8*i+j] = 0;
-      kyb_cmov_int16(r->coeffs+8*i+j, ((KYB_Q + 1) / 2), (msg[i] >> j) & 1);
+    for ( i = 0; i < KYB_N / 8; i++ ) {
+      for ( j = 0; j < 8; j++ ) { 
+        r->coeffs[8*i+j] = 0;
+        kyb_cmov_int16(r->coeffs+8*i+j, ((KYB_Q + 1) / 2), (msg[i] >> j) & 1);
+      }
     }
-  }
 }
 
 /*************************************************
@@ -3738,6 +3839,15 @@ static size_t dil_prv_wirebytes(unsigned int k, unsigned int l, unsigned int rou
                k * DIL_R3_POLYT0_PACKEDBYTES;
     }
 
+    if ( round == 4 ) {
+        switch ( (round << 16) | (k << 4) | l ) {
+        case 0x40044: return DIL_MLDSA_PRV4x4_BYTES;
+        case 0x40065: return DIL_MLDSA_PRV6x5_BYTES;
+        case 0x40087: return DIL_MLDSA_PRV8x7_BYTES;
+        default: return 0;
+        }
+    }
+
     return 0;
 }
 
@@ -3757,6 +3867,10 @@ static size_t dil_pub_wirebytes(unsigned int k, unsigned int l, unsigned int rou
     case 0x30044: return DIL_R3_PUB4x4_BYTES;
     case 0x30065: return DIL_R3_PUB6x5_BYTES;
     case 0x30087: return DIL_R3_PUB8x7_BYTES;
+
+    case 0x40044: return DIL_MLDSA_44_PUB_BYTES;
+    case 0x40065: return DIL_MLDSA_65_PUB_BYTES;
+    case 0x40087: return DIL_MLDSA_87_PUB_BYTES;
 
     default: return 0;
     }
@@ -3867,6 +3981,10 @@ static size_t dil_signature_bytes(unsigned int k, unsigned int l, unsigned int r
     case 0x30065: return DIL_R3_SIGBYTES6x5;
     case 0x30087: return DIL_R3_SIGBYTES8x7;
 
+    case 0x40044: return DIL_MLDSA_SIGBYTES4x4; /* mldsa */
+    case 0x40065: return DIL_MLDSA_SIGBYTES6x5;
+    case 0x40087: return DIL_MLDSA_SIGBYTES8x7;
+
     default: return 0;
     }
 }
@@ -3887,6 +4005,10 @@ static unsigned int dil_sigbytes2type(size_t sigbytes)
     case 3293: return MLCA_ID_DIL3_R3;
     case 4595: return MLCA_ID_DIL5_R3;
 
+    // case 2420: return MLCA_ID_DIL_MLDSA_44; // ambiguous
+    //case 3309: return MLCA_ID_DIL_MLDSA_65;
+    //case 4627: return MLCA_ID_DIL_MLDSA_87;
+
     default: return 0;
     }
 }
@@ -3905,6 +4027,10 @@ static unsigned int dil__prvbytes2type(size_t prvbytes)
     case DIL_R3_PRV4x4_BYTES: return MLCA_ID_DIL2_R3;
     case DIL_R3_PRV6x5_BYTES: return MLCA_ID_DIL3_R3;
     case DIL_R3_PRV8x7_BYTES: return MLCA_ID_DIL5_R3;
+
+    case DIL_MLDSA_PRV4x4_BYTES: return MLCA_ID_DIL_MLDSA_44;
+    case DIL_MLDSA_PRV6x5_BYTES: return MLCA_ID_DIL_MLDSA_65;
+    case DIL_MLDSA_PRV8x7_BYTES: return MLCA_ID_DIL_MLDSA_87;
 
     default: return 0;
     }
@@ -3929,6 +4055,17 @@ static unsigned int dil__pubbytes2type(size_t pubbytes)
     }
 }
 
+static unsigned int dil__pubbytes2type_mldsa(size_t pubbytes)
+{
+    switch ( pubbytes ) {
+    case DIL_MLDSA_44_PUB_BYTES: return MLCA_ID_DIL_MLDSA_44;
+    case DIL_MLDSA_65_PUB_BYTES: return MLCA_ID_DIL_MLDSA_65;
+    case DIL_MLDSA_87_PUB_BYTES: return MLCA_ID_DIL_MLDSA_87;
+
+    default: return 0;
+    }
+}
+
 /*--------------------------------------
  * OID stubs for Dilithium
  *
@@ -3941,8 +4078,14 @@ static const unsigned char crs_oidstub[] = {
     0x06, 0x0b,                                      // OID{
     0x2b, 0x06, 0x01, 0x04, 0x01, 0x02, 0x82, 0x0b,  //     ...}
 };
+
+static const unsigned char crs_oidstub_csor[] = {
+    0x06, 0x09,
+    0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04
+};
 /**/
-#define CRS_OIDTAIL_BYTES ((size_t)3)
+#define CRS_OIDTAIL_BYTES      ((size_t)3)
+#define CRS_OIDTAIL_CSOR_BYTES ((size_t)2)
 
 /*--------------------------------------
  * returns  >0  if Crystals variant is a recognized one, see MLCA_ID_t
@@ -3990,6 +4133,20 @@ static unsigned int crs_oid2type(const unsigned char *oid, size_t obytes)
             /* (.8) Kyber round3 */
         case 0x080303: rc = MLCA_ID_KYB3_R3; break;
         case 0x080404: rc = MLCA_ID_KYB4_R3; break;
+
+        default: break;
+        }
+    } else if ( oid && (obytes == sizeof(crs_oidstub_csor) + CRS_OIDTAIL_CSOR_BYTES) &&
+         !MEMCMP(oid, crs_oidstub_csor, obytes - CRS_OIDTAIL_CSOR_BYTES) ) {
+        switch ( MSBF4_READ(oid + obytes - 4) & 0xffff ) {
+        /* ML-DSA */
+        case 0x0311: rc = MLCA_ID_DIL_MLDSA_44; break;
+        case 0x0312: rc = MLCA_ID_DIL_MLDSA_65; break;
+        case 0x0313: rc = MLCA_ID_DIL_MLDSA_87; break;
+        
+        /* ML-KEM */
+        case 0x0402: rc = MLCA_ID_KYB_MLKEM_768; break;
+        case 0x0403: rc = MLCA_ID_KYB_MLKEM_1024; break;
 
         default: break;
         }
@@ -4076,12 +4233,18 @@ static unsigned int crs_type2category(unsigned int type)
     case MLCA_ID_DIL5_R2_RAW:
     case MLCA_ID_DIL2_R3:
     case MLCA_ID_DIL3_R3:
-    case MLCA_ID_DIL5_R3: return CRS_ALG_FL_SIG;
+    case MLCA_ID_DIL5_R3:
+    case MLCA_ID_DIL_MLDSA_44:
+    case MLCA_ID_DIL_MLDSA_65:
+    case MLCA_ID_DIL_MLDSA_87: return CRS_ALG_FL_SIG;
+
 
     case MLCA_ID_KYB3_R2:
     case MLCA_ID_KYB4_R2:
     case MLCA_ID_KYB3_R3:
-    case MLCA_ID_KYB4_R3: return CRS_ALG_FL_KEX | CRS_ALG_FL_CIP;
+    case MLCA_ID_KYB4_R3:
+    case MLCA_ID_KYB_MLKEM_768:
+    case MLCA_ID_KYB_MLKEM_1024: return CRS_ALG_FL_KEX | CRS_ALG_FL_CIP;
 
     default: return 0;
     }
@@ -5784,10 +5947,12 @@ static unsigned int kyb_type2k(unsigned int type)
 {
     switch ( type ) {
     case MLCA_ID_KYB3_R2:
-    case MLCA_ID_KYB3_R3: return 3; /* Kyber-768 */
+    case MLCA_ID_KYB3_R3:
+    case MLCA_ID_KYB_MLKEM_768: return 3; /* Kyber-768 */
 
     case MLCA_ID_KYB4_R2:
-    case MLCA_ID_KYB4_R3: return 4; /* Kyber-1024 */
+    case MLCA_ID_KYB4_R3:
+    case MLCA_ID_KYB_MLKEM_1024: return 4; /* Kyber-1024 */
 
     default: return 0;
     }
@@ -5809,9 +5974,12 @@ static unsigned int dil_type2eta(unsigned int type)
     case MLCA_ID_DIL5_R2:
     case MLCA_ID_DIL2_R3:
     case MLCA_ID_DIL5_R3:
-    case MLCA_ID_DIL5_R2_RAW: return 2;
+    case MLCA_ID_DIL5_R2_RAW:
+    case MLCA_ID_DIL_MLDSA_44:
+    case MLCA_ID_DIL_MLDSA_87: return 2;
 
-    case MLCA_ID_DIL3_R3: return 4;
+    case MLCA_ID_DIL3_R3:
+    case MLCA_ID_DIL_MLDSA_65: return 4;
 
     default: return 0;
     }
@@ -5834,6 +6002,10 @@ static unsigned int dil_type2round(unsigned int type)
     case MLCA_ID_DIL3_R3:
     case MLCA_ID_DIL5_R3: return 3;
 
+    case MLCA_ID_DIL_MLDSA_44:
+    case MLCA_ID_DIL_MLDSA_65:
+    case MLCA_ID_DIL_MLDSA_87: return 4;
+
     default: return 0;
     }
 }
@@ -5846,6 +6018,9 @@ static unsigned int kyb_type2round(unsigned int type)
 
     case MLCA_ID_KYB3_R3:
     case MLCA_ID_KYB4_R3: return 3;
+
+    case MLCA_ID_KYB_MLKEM_768:
+    case MLCA_ID_KYB_MLKEM_1024: return 4;
 
     default: return 0;
     }
@@ -6205,6 +6380,58 @@ static size_t dil_r3sig2wire(unsigned char *sig, size_t sbytes, const unsigned c
     return sb;
 }
 
+/*************************************************
+ * Bit-pack signature sig = (z, h, c).
+ * Arguments:   - uint8_t sig[]: output byte array
+ *              - chash[ CTILBYTES ]: challenge hash
+ *              - const polyvecl *z: pointer to vector z
+ *              - const polyveck *h: pointer to hint vector h
+ * accesses only necessary number of elements of z[] and h[]
+ *
+ * sig[] and chash[] MAY be the same buffer; other overlap is undefined
+ **************************************************/
+static size_t dil_mldsasig2wire(unsigned char *sig, size_t sbytes, const unsigned char *chash,
+                             const spolyvec_max *z, const spolyvec_max *h, unsigned int dil_k,
+                             unsigned int dil_l)
+{
+    unsigned int i, j, k = 0, omega = dil_omega(dil_k, 3);
+    size_t       sb  = dil_signature_bytes(dil_k, dil_l, 4), pzb = dil_r3k2polyz_bytes(dil_k);
+    size_t ctilbytes = dil_mldsa_ctilbytes(dil_k);
+
+    if ( !sb || !omega || !pzb )
+        return 0;
+    if ( sbytes < sb )
+        return 0;
+
+    if ( (const unsigned char *)sig != chash )
+        MEMMOVE(sig, chash, ctilbytes);
+    /* tolerate in-place write (NOP)
+     * only memset(0) below
+     */
+    sig += ctilbytes;
+
+    MEMSET(sig, 0, sb - ctilbytes);
+
+    for ( i = 0; i < dil_l; ++i ) /* ... < L */
+        spolyz_pack(sig + i * pzb, &(z->vec[i]), dil_k);
+
+    sig += dil_l * pzb;
+
+    /* Encode h */
+    for ( i = 0; i < dil_k; ++i ) {
+        for ( j = 0; j < DIL_N; ++j ) {
+            if ( h->vec[i].coeffs[j] != 0 ) {
+                sig[k] = j;
+                ++k;
+            }
+        }
+
+        sig[omega + i] = k;
+    }
+
+    return sb;
+}
+
 /*------------------------------------
  * Unpack signature sig = (z, h, c); round 2
  * Arguments:   - polyvecl *z: pointer to output vector z
@@ -6319,6 +6546,75 @@ static int r3_wire2sig(unsigned char *chash, /* DIL_SEEDBYTES */
         MEMMOVE(chash, sig, DIL_SEEDBYTES);
 
     sig += DIL_SEEDBYTES;
+
+    for ( i = 0; i < dil_l; ++i ) /* L */
+        spolyz_unpack(&(z->vec[i]), sig + i * pzb, dil_k);
+
+    sig += dil_l * pzb; /* L * ... */
+
+    /* Decode h */
+    k = 0;
+
+    for ( i = 0; i < dil_k; ++i ) {
+        for ( j = 0; j < DIL_N; ++j )
+            h->vec[i].coeffs[j] = 0;
+
+        if ( (sig[omega + i] < k) || (sig[omega + i] > omega) )
+            return 3;
+
+        for ( j = k; j < sig[omega + i]; ++j ) {
+            /* Coefficients are ordered for strong unforgeability */
+
+            if ( (j > k) && (sig[j] <= sig[j - 1]) )
+                return 4;
+
+            h->vec[i].coeffs[sig[j]] = 1;
+        }
+
+        k = sig[omega + i];
+    }
+
+    /* Extra indices are zero for strong unforgeability */
+    for ( j = k; j < omega; ++j ) {
+        if ( sig[j] )
+            return 5;
+    }
+
+    sig += omega + dil_k;
+
+    return 0;
+}
+
+/*------------------------------------
+ * Unpack signature sig = (z, h, c); round3
+ * Arguments:   - chash: challenge hash  [CTILBYTES]
+ *              - polyvecl *z: pointer to output vector z
+ *              - polyveck *h: pointer to output hint vector h
+ *              - const uint8_t sig[]: byte array containing
+ *                bit-packed signature
+ *
+ * Returns >0 in case of malformed signature; otherwise 0.
+ *
+ * accesses only necessary number of elements of z[] and h[],
+ * 'sig' and 'chash' may be the same buffer; other overlap is undefined
+ **************************************************/
+static int mldsa_wire2sig(unsigned char *chash, /* CTILBYTES */
+                       spolyvec_max *z, spolyvec_max *h, unsigned int dil_k, unsigned int dil_l,
+                       const unsigned char *sig, size_t sbytes)
+{
+    size_t       sb = dil_signature_bytes(dil_k, dil_l, 4), pzb = dil_r3k2polyz_bytes(dil_k);
+    unsigned int i, j, k, omega = dil_omega(dil_k, 3);
+    size_t ctilbytes = dil_mldsa_ctilbytes(dil_k);
+
+    if ( !sig || (sb != sbytes) )
+        return 1;
+    if ( !z || !h || !chash )
+        return 2; /* should-not-happen */
+
+    if ( (const unsigned char *)chash != sig )
+        MEMMOVE(chash, sig, ctilbytes);
+
+    sig += ctilbytes;
 
     for ( i = 0; i < dil_l; ++i ) /* L */
         spolyz_unpack(&(z->vec[i]), sig + i * pzb, dil_k);
@@ -7036,6 +7332,330 @@ REJECT:
 }
 
 /*************************************************
+ * Description: Computes signature (mldsa)
+ * Arguments:   - uint8_t *sig:   pointer to output signature (of length CRYPTO_BYTES)
+ *              - size_t siglen:  max.available/written signature (in/output)
+ *              - uint8_t *m:     pointer to message to be signed
+ *              - size_t mlen:    length of message
+ *              - uint8_t *sk:    pointer to bit-packed secret key
+ * Returns 0 (failure) or >0 (written bytecount)
+ **************************************************/
+static size_t mldsa_sign_internal(const void *pKey, unsigned char *sig, size_t siglen, const uint8_t *m,
+                                  size_t mlen, const uint8_t *sk, size_t skbytes, unsigned int type, const uint8_t *domsep, size_t domsepLen, const uint8_t *coins)
+{
+    uint8_t      seedbuf[2*DIL_SEEDBYTES + DIL_MLDSA_TRBYTES + DIL_MLDSA_RNDBYTES + 2 * DIL_R3_CRHBYTES];
+    uint8_t     *rho, *tr, *key, *mu, *rhoprime, *rnd;
+    unsigned int n = 0, K = 0, L = 0, beta, rej = 0, omega;
+    int32_t      gamma1, gamma2;
+    uint16_t     nonce = 0;
+    size_t       wr;
+
+    struct sign_mat {
+        spoly        cp;
+        spolyvec_max mat[DIL_VECT_MAX]; /* using only K * L */
+        spolyvec_max s1, y, z;          /* L */
+        spolyvec_max t0, s2, w1, w0, h; /* K */
+        Keccak_state state;
+    };
+    struct sign_mat mat, *pMat = &mat;
+    MARK_UNUSED(pKey);
+
+    // layout: [key || mu] MUST be consecutive
+    rho      = seedbuf;
+    tr       = rho + DIL_SEEDBYTES;
+    key      = tr + DIL_MLDSA_TRBYTES;
+    rnd      = key + DIL_SEEDBYTES;
+    mu       = rnd + DIL_MLDSA_RNDBYTES;
+    rhoprime = mu + DIL_R3_CRHBYTES;
+
+    if ( !type )
+        type = dil__prvbytes2type(skbytes);
+
+    K      = dil_type2k(type);
+    L      = dil_type2l(type);
+    gamma1 = dil_r3k2gamma1(K);
+    gamma2 = dil_r3k2gamma2(K);
+    beta   = dil_k2beta(K, 3);
+    omega  = dil_omega(K, 3);
+
+    if ( ((dil_type2round(type) != 4) || !K || !L) ||
+         (!gamma1 || !gamma2 || !beta || !omega || ((int32_t)beta > gamma1) ||
+          ((int32_t)beta > gamma2)) ) {
+        return 0;
+    }
+
+    switch ( K ) { /* s1 is L-sized; s2+t0 are K-sized */
+    case 4:
+        ml_sunpack_prv4(rho, key, tr, (spolyvec4 *)&pMat->s1, (spolyvec4 *)&pMat->s2,
+                     (spolyvec4 *)&pMat->t0, sk);
+        break;
+    case 6:
+        ml_sunpack_prv6(rho, key, tr, (spolyvec5 *)&pMat->s1, (spolyvec6 *)&pMat->s2,
+                     (spolyvec6 *)&pMat->t0, sk);
+        break;
+    case 8:
+        ml_sunpack_prv8(rho, key, tr, (spolyvec7 *)&pMat->s1, (spolyvec8 *)&pMat->s2,
+                     (spolyvec8 *)&pMat->t0, sk);
+        break;
+    }
+
+    /* mu[ DIL_R3_CRHBYTES ] := H(tr, msg) */
+    shake256_init(&pMat->state);
+    shake256_absorb(&pMat->state, tr, DIL_MLDSA_TRBYTES);
+    if (domsepLen && domsep != NULL)
+        shake256_absorb(&pMat->state, domsep, domsepLen);
+    shake256_absorb(&pMat->state, m, mlen);
+    shake256_finalize(&pMat->state);
+    shake256_squeeze(mu, DIL_R3_CRHBYTES, &pMat->state);
+
+    MEMCPY(rnd, coins, DIL_MLDSA_RNDBYTES);
+
+    shake256(rhoprime, DIL_R3_CRHBYTES, key, DIL_SEEDBYTES + DIL_MLDSA_RNDBYTES + DIL_R3_CRHBYTES);
+
+    /* Expand matrix and transform vectors */
+    switch ( K ) {
+    case 4:
+        expand_smatrix_4x4(pMat->mat, rho);
+        spolyvec4_ntt((spolyvec4 *)&pMat->s1); /* L */
+        spolyvec4_ntt((spolyvec4 *)&pMat->s2); /* K */
+        spolyvec4_ntt((spolyvec4 *)&pMat->t0);
+        break;
+    case 6:
+        expand_smatrix_6x5(pMat->mat, rho);
+        spolyvec5_ntt((spolyvec5 *)&pMat->s1); /* L */
+        spolyvec6_ntt((spolyvec6 *)&pMat->s2); /* K */
+        spolyvec6_ntt((spolyvec6 *)&pMat->t0);
+        break;
+    case 8:
+        expand_smatrix_8x7(pMat->mat, rho);
+        spolyvec7_ntt((spolyvec7 *)&pMat->s1); /* L */
+        spolyvec8_ntt((spolyvec8 *)&pMat->s2); /* K */
+        spolyvec8_ntt((spolyvec8 *)&pMat->t0);
+        break;
+    }
+
+REJECT:
+    /* Sample intermediate vector y */
+    switch ( K ) {
+    case 4:
+        spolyvec4_uniform_gamma1((spolyvec4 *)&pMat->y, rhoprime, nonce++, K);
+        pMat->z = pMat->y;
+        spolyvec4_ntt((spolyvec4 *)&pMat->z);
+        /**/
+        /* matrix-vector multiply */
+        spolyvec4x4_matrix_pointwise_montgomery((spolyvec4 *)&pMat->w1, pMat->mat,
+                                                (const spolyvec4 *)&pMat->z);
+        spolyvec4_reduce((spolyvec4 *)&pMat->w1);
+        spolyvec4_invntt_tomont((spolyvec4 *)&pMat->w1);
+        /* decompose W */
+        spolyvec4_caddq((spolyvec4 *)&pMat->w1);
+        spolyvec4_decompose((spolyvec4 *)&pMat->w1, (spolyvec4 *)&pMat->w0,
+                            (const spolyvec4 *)&pMat->w1);
+        spolyvec4_pack_w1(sig, (const spolyvec4 *)&pMat->w1);
+        break;
+
+    case 6:
+        spolyvec5_uniform_gamma1((spolyvec5 *)&pMat->y, rhoprime, nonce++, K);
+        pMat->z = pMat->y;
+        spolyvec5_ntt((spolyvec5 *)&pMat->z);
+        /**/
+        /* matrix-vector multiply */
+        spolyvec6x5_matrix_pointwise_montgomery((spolyvec6 *)&pMat->w1, pMat->mat,
+                                                (const spolyvec5 *)&pMat->z);
+        spolyvec6_reduce((spolyvec6 *)&pMat->w1);
+        spolyvec6_invntt_tomont((spolyvec6 *)&pMat->w1);
+        /* decompose W */
+        spolyvec6_caddq((spolyvec6 *)&pMat->w1);
+        spolyvec6_decompose((spolyvec6 *)&pMat->w1, (spolyvec6 *)&pMat->w0,
+                            (const spolyvec6 *)&pMat->w1);
+        spolyvec6_pack_w1(sig, (const spolyvec6 *)&pMat->w1);
+        break;
+
+    case 8:
+        spolyvec7_uniform_gamma1((spolyvec7 *)&pMat->y, rhoprime, nonce++, K);
+        pMat->z = pMat->y;
+        spolyvec7_ntt((spolyvec7 *)&pMat->z);
+        /**/
+        /* matrix-vector multiply */
+        spolyvec8x7_matrix_pointwise_montgomery((spolyvec8 *)&pMat->w1, pMat->mat,
+                                                (const spolyvec7 *)&pMat->z);
+        spolyvec8_reduce((spolyvec8 *)&pMat->w1);
+        spolyvec8_invntt_tomont((spolyvec8 *)&pMat->w1);
+        /* decompose W */
+        spolyvec8_caddq((spolyvec8 *)&pMat->w1);
+        spolyvec8_decompose((spolyvec8 *)&pMat->w1, (spolyvec8 *)&pMat->w0,
+                            (const spolyvec8 *)&pMat->w1);
+        spolyvec8_pack_w1(sig, (const spolyvec8 *)&pMat->w1);
+        break;
+    }
+    /* written sig[ K * POLYW1-PACKED-BYTES ] */
+
+    wr = K * dil_r3k2polyw1_bytes(K);
+
+    /* sig[ DIL_SEEDBYTES ] := CRH(mu[], sig[wr]) */
+    shake256_init(&pMat->state);
+    shake256_absorb(&pMat->state, mu, DIL_R3_CRHBYTES);
+    shake256_absorb(&pMat->state, sig, wr);
+    shake256_finalize(&pMat->state);
+    shake256_squeeze(sig, K * 8, &pMat->state); // CTILDEBYTES = K*8
+
+    ml_spoly_challenge(&pMat->cp, sig, K);
+    spoly_ntt256(&pMat->cp);
+
+    switch ( K ) {
+    case 4:
+        spolyvec4_pointwise_poly_montgomery((spolyvec4 *)&pMat->z, &pMat->cp,
+                                            (const spolyvec4 *)&pMat->s1);
+        spolyvec4_invntt_tomont((spolyvec4 *)&pMat->z);
+        spolyvec4_add((spolyvec4 *)&pMat->z, (const spolyvec4 *)&pMat->z,
+                      (const spolyvec4 *)&pMat->y);
+        spolyvec4_reduce((spolyvec4 *)&pMat->z);
+        rej = spolyvec4_chknorm((const spolyvec4 *)&pMat->z, gamma1 - beta);
+        break;
+
+    case 6:
+        spolyvec5_pointwise_poly_montgomery((spolyvec5 *)&pMat->z, &pMat->cp,
+                                            (const spolyvec5 *)&pMat->s1);
+        spolyvec5_invntt_tomont((spolyvec5 *)&pMat->z);
+        spolyvec5_add((spolyvec5 *)&pMat->z, (const spolyvec5 *)&pMat->z,
+                      (const spolyvec5 *)&pMat->y);
+        spolyvec5_reduce((spolyvec5 *)&pMat->z);
+        rej = spolyvec5_chknorm((const spolyvec5 *)&pMat->z, gamma1 - beta);
+        break;
+
+    case 8:
+        spolyvec7_pointwise_poly_montgomery((spolyvec7 *)&pMat->z, &pMat->cp,
+                                            (const spolyvec7 *)&pMat->s1);
+        spolyvec7_invntt_tomont((spolyvec7 *)&pMat->z);
+        spolyvec7_add((spolyvec7 *)&pMat->z, (const spolyvec7 *)&pMat->z,
+                      (const spolyvec7 *)&pMat->y);
+        spolyvec7_reduce((spolyvec7 *)&pMat->z);
+        rej = spolyvec7_chknorm((const spolyvec7 *)&pMat->z, gamma1 - beta);
+        break;
+    }
+    if ( rej )
+        goto REJECT;
+
+    /* Check that subtracting cs2 does not change
+     * high bits of w and low bits do not reveal
+     * secret information */
+    switch ( K ) {
+    case 4:
+        spolyvec4_pointwise_poly_montgomery((spolyvec4 *)&pMat->h, &pMat->cp,
+                                            (const spolyvec4 *)&pMat->s2);
+        spolyvec4_invntt_tomont((spolyvec4 *)&pMat->h);
+        spolyvec4_sub((spolyvec4 *)&pMat->w0, (const spolyvec4 *)&pMat->w0,
+                      (const spolyvec4 *)&pMat->h);
+        spolyvec4_reduce((spolyvec4 *)&pMat->w0);
+        rej = spolyvec4_chknorm((const spolyvec4 *)&pMat->w0, gamma2 - beta);
+        break;
+
+    case 6:
+        spolyvec6_pointwise_poly_montgomery((spolyvec6 *)&pMat->h, &pMat->cp,
+                                            (const spolyvec6 *)&pMat->s2);
+        spolyvec6_invntt_tomont((spolyvec6 *)&pMat->h);
+        spolyvec6_sub((spolyvec6 *)&pMat->w0, (const spolyvec6 *)&pMat->w0,
+                      (const spolyvec6 *)&pMat->h);
+        spolyvec6_reduce((spolyvec6 *)&pMat->w0);
+        rej = spolyvec6_chknorm((const spolyvec6 *)&pMat->w0, gamma2 - beta);
+        break;
+
+    case 8:
+        spolyvec8_pointwise_poly_montgomery((spolyvec8 *)&pMat->h, &pMat->cp,
+                                            (const spolyvec8 *)&pMat->s2);
+        spolyvec8_invntt_tomont((spolyvec8 *)&pMat->h);
+        spolyvec8_sub((spolyvec8 *)&pMat->w0, (const spolyvec8 *)&pMat->w0,
+                      (const spolyvec8 *)&pMat->h);
+        spolyvec8_reduce((spolyvec8 *)&pMat->w0);
+        rej = spolyvec8_chknorm((const spolyvec8 *)&pMat->w0, gamma2 - beta);
+        break;
+    }
+    if ( rej )
+        goto REJECT;
+
+    /* compute hints for W1 */
+    switch ( K ) {
+    case 4:
+        spolyvec4_pointwise_poly_montgomery((spolyvec4 *)&pMat->h, &pMat->cp,
+                                            (const spolyvec4 *)&pMat->t0);
+        spolyvec4_invntt_tomont((spolyvec4 *)&pMat->h);
+        spolyvec4_reduce((spolyvec4 *)&pMat->h);
+        rej = spolyvec4_chknorm((const spolyvec4 *)&pMat->h, gamma2);
+        break;
+
+    case 6:
+        spolyvec6_pointwise_poly_montgomery((spolyvec6 *)&pMat->h, &pMat->cp,
+                                            (const spolyvec6 *)&pMat->t0);
+        spolyvec6_invntt_tomont((spolyvec6 *)&pMat->h);
+        spolyvec6_reduce((spolyvec6 *)&pMat->h);
+        rej = spolyvec6_chknorm((const spolyvec6 *)&pMat->h, gamma2);
+        break;
+
+    case 8:
+        spolyvec8_pointwise_poly_montgomery((spolyvec8 *)&pMat->h, &pMat->cp,
+                                            (const spolyvec8 *)&pMat->t0);
+        spolyvec8_invntt_tomont((spolyvec8 *)&pMat->h);
+        spolyvec8_reduce((spolyvec8 *)&pMat->h);
+        rej = spolyvec8_chknorm((const spolyvec8 *)&pMat->h, gamma2);
+        break;
+    }
+    if ( rej )
+        goto REJECT;
+
+    switch ( K ) {
+    case 4:
+        spolyvec4_add((spolyvec4 *)&pMat->w0, (const spolyvec4 *)&pMat->w0,
+                      (const spolyvec4 *)&pMat->h);
+        n = spolyvec4_make_hint((spolyvec4 *)&pMat->h, (const spolyvec4 *)&pMat->w0,
+                                (const spolyvec4 *)&pMat->w1, K);
+        break;
+
+    case 6:
+        spolyvec6_add((spolyvec6 *)&pMat->w0, (const spolyvec6 *)&pMat->w0,
+                      (const spolyvec6 *)&pMat->h);
+        n = spolyvec6_make_hint((spolyvec6 *)&pMat->h, (const spolyvec6 *)&pMat->w0,
+                                (const spolyvec6 *)&pMat->w1, K);
+        break;
+
+    case 8:
+        spolyvec8_add((spolyvec8 *)&pMat->w0, (const spolyvec8 *)&pMat->w0,
+                      (const spolyvec8 *)&pMat->h);
+        n = spolyvec8_make_hint((spolyvec8 *)&pMat->h, (const spolyvec8 *)&pMat->w0,
+                                (const spolyvec8 *)&pMat->w1, K);
+        break;
+    }
+    rej = (n > omega);
+    if ( rej )
+        goto REJECT;
+
+    siglen = dil_mldsasig2wire(sig, siglen, sig, &pMat->z, &pMat->h, K, L);
+    /* sig... -> sig... is not a typo,
+     * documented to work in-place
+     */
+
+    MEMSET0_STRICT(pMat, sizeof(struct sign_mat));
+    /* ...any special-cased log etc. would come here... */
+
+    return siglen;
+}
+
+static size_t mldsa_sign(const void *pKey, unsigned char *sig, size_t siglen, const uint8_t *m,
+                         size_t mlen, const uint8_t *sk, size_t skbytes, unsigned int type, void *rng) {
+    int rc = 0;
+    uint8_t coins[DIL_MLDSA_RNDBYTES];
+    if (rng != NULL)    // FIPS 204 hedged/randomized
+        randombytes(coins, DIL_MLDSA_RNDBYTES, rng);
+    else                // FIPS 204 deterministic
+        MEMSET0_STRICT(coins, DIL_MLDSA_RNDBYTES);
+
+    rc = mldsa_sign_internal(pKey, sig, siglen, m, mlen, sk, skbytes, type, mldsa_ds_pure, 2, coins);
+
+    MEMSET0_STRICT(coins, DIL_MLDSA_RNDBYTES);
+
+    return rc;
+}
+
+/*************************************************
  * Description: Verifies signature.
  * Arguments:   - uint8_t *m: pointer to input signature
  *              - size_t siglen: length of signature
@@ -7392,6 +8012,197 @@ static int r3_verify(const void *pKey, const uint8_t *sig, size_t siglen, const 
 
     return rc;
 }
+
+/*************************************************
+ * Description: Verifies signature.
+ * Arguments:   - uint8_t *m: pointer to input signature
+ *              - size_t siglen: length of signature
+ *              - const uint8_t *m: pointer to message
+ *              - size_t mlen: length of message
+ *              - const uint8_t *pk: pointer to bit-packed public key
+ * Returns >0 if signature could be verified correctly and 0 otherwise
+ **************************************************/
+static int mldsa_verify_internal(const void *pKey, const uint8_t *sig, size_t siglen, const uint8_t *m,
+                                 size_t mlen, const uint8_t *pk, size_t pkbytes, const uint8_t *domsep, size_t domsepLen)
+{
+    int           rc = 1;
+    unsigned int  K  = 0, L, beta, type;
+    unsigned char rho[DIL_MLDSA_MAX_CTILDEBYTES], mu[DIL_R3_CRHBYTES], chash[DIL_MLDSA_MAX_CTILDEBYTES],
+        w1pack[DIL__KxPOLYW1_MAX_BYTES]; // note: rho size is max(DIL_MLDSA_MAX_CTILDEBYTES, DIL_SEEDBYTES)
+    int32_t gamma1, gamma2;
+    size_t  sigb, w1pb, i, ctilbytes;
+
+    struct ver_mat {
+        spoly        cp;
+        spolyvec_max mat[DIL_VECT_MAX], z; /* L; LxK (mat) */
+        spolyvec_max t1, h, w1;            /* K */
+        Keccak_state state;
+    };
+
+    struct ver_mat mat, *pMat = &mat;
+    MARK_UNUSED(pKey);
+
+    type      = dil__pubbytes2type_mldsa(pkbytes);
+    K         = dil_type2k(type);
+    L         = dil_type2l(type);
+    ctilbytes = dil_mldsa_ctilbytes(K);
+    gamma1    = dil_r3k2gamma1(K);
+    gamma2    = dil_r3k2gamma2(K);
+    w1pb      = K * dil_r3k2polyw1_bytes(K);
+    /**/
+    if ( !type || !K || !L || !gamma1 || !gamma2 || !w1pb || (w1pb > sizeof(w1pack)) ||
+         (dil_type2round(type) != 4) )
+        return MLCA_EKEYTYPE;
+
+    sigb = dil_signature_bytes(K, L, 4);
+    beta = dil_k2beta(K, 3);
+    /**/
+    if ( !sig || !sigb || (siglen != sigb) )
+        return 0;
+
+
+    switch ( K ) {
+    case 4: sunpack_pk4(rho, (spolyvec4 *)&pMat->t1, pk); break;
+    case 6: sunpack_pk6(rho, (spolyvec6 *)&pMat->t1, pk); break;
+    case 8: sunpack_pk8(rho, (spolyvec8 *)&pMat->t1, pk); break;
+    default: rc = MLCA_EINTERN;
+    }
+
+    if ( rc == 1 && mldsa_wire2sig(chash, &pMat->z, &pMat->h, K, L, sig, siglen) )
+        rc = 0;
+
+    if ( rc == 1 ) {
+        unsigned int fail = 0;
+        switch ( K ) {
+        case 4: fail = !!spolyvec4_chknorm((const spolyvec4 *)&pMat->z, gamma1 - beta); break;
+        case 6: fail = !!spolyvec5_chknorm((const spolyvec5 *)&pMat->z, gamma1 - beta); break;
+        case 8: fail = !!spolyvec7_chknorm((const spolyvec7 *)&pMat->z, gamma1 - beta); break;
+        default: break;
+        }
+        if ( fail )
+            rc = 0;
+
+        /* mu[ DIL_SEEDBYTES ] := CRH(H(rho, t1), msg) */
+        if ( rc == 1 ) {
+            /* round3.0 was:
+              dil_crh(mu, DIL_CRHBYTES, pk, pkbytes);
+             */
+            shake256(mu, DIL_R3_CRHBYTES, pk, pkbytes);
+            /**/
+            shake256_init(&pMat->state);
+            shake256_absorb(&pMat->state, mu, DIL_R3_CRHBYTES);
+            if (domsepLen)
+                shake256_absorb(&pMat->state, domsep, domsepLen);
+            shake256_absorb(&pMat->state, m, mlen);
+            shake256_finalize(&pMat->state);
+            shake256_squeeze(mu, DIL_R3_CRHBYTES, &pMat->state);
+
+            ml_spoly_challenge(&pMat->cp, chash, K);
+
+            /* Matrix-vector multiplication; compute Az - c2^dt1 */
+
+            switch ( K ) { /* NTT on L-sized vector */
+            case 4:
+                expand_smatrix_4x4(pMat->mat, rho);
+                spolyvec4_ntt((spolyvec4 *)&pMat->z); /* L */
+                spolyvec4x4_matrix_pointwise_montgomery((spolyvec4 *)&pMat->w1, pMat->mat,
+                                                        (const spolyvec4 *)&pMat->z);
+                break;
+
+            case 6:
+                expand_smatrix_6x5(pMat->mat, rho);
+                spolyvec5_ntt((spolyvec5 *)&pMat->z); /* L */
+                spolyvec6x5_matrix_pointwise_montgomery((spolyvec6 *)&pMat->w1, pMat->mat,
+                                                        (const spolyvec5 *)&pMat->z);
+                break;
+
+            case 8:
+                expand_smatrix_8x7(pMat->mat, rho);
+                spolyvec7_ntt((spolyvec7 *)&pMat->z); /* L */
+                spolyvec8x7_matrix_pointwise_montgomery((spolyvec8 *)&pMat->w1, pMat->mat,
+                                                        (const spolyvec7 *)&pMat->z);
+                break;
+            }
+
+            spoly_ntt256(&pMat->cp);
+
+            switch ( K ) {
+            case 4:
+                spolyvec4_shiftl((spolyvec4 *)&pMat->t1);
+                spolyvec4_ntt((spolyvec4 *)&pMat->t1);
+                spolyvec4_pointwise_poly_montgomery((spolyvec4 *)&pMat->t1, &pMat->cp,
+                                                    (const spolyvec4 *)&pMat->t1);
+                spolyvec4_sub((spolyvec4 *)&pMat->w1, (const spolyvec4 *)&pMat->w1,
+                              (const spolyvec4 *)&pMat->t1);
+                spolyvec4_reduce((spolyvec4 *)&pMat->w1);
+                spolyvec4_invntt_tomont((spolyvec4 *)&pMat->w1);
+                /* reconstruct W1 */
+                spolyvec4_caddq((spolyvec4 *)&pMat->w1);
+                spolyvec4_use_hint((spolyvec4 *)&pMat->w1, (const spolyvec4 *)&pMat->w1,
+                                   (const spolyvec4 *)&pMat->h, K);
+                spolyvec4_pack_w1(w1pack, (const spolyvec4 *)&pMat->w1);
+                break;
+
+            case 6:
+                spolyvec6_shiftl((spolyvec6 *)&pMat->t1);
+                spolyvec6_ntt((spolyvec6 *)&pMat->t1);
+                spolyvec6_pointwise_poly_montgomery((spolyvec6 *)&pMat->t1, &pMat->cp,
+                                                    (const spolyvec6 *)&pMat->t1);
+                spolyvec6_sub((spolyvec6 *)&pMat->w1, (const spolyvec6 *)&pMat->w1,
+                              (const spolyvec6 *)&pMat->t1);
+                spolyvec6_reduce((spolyvec6 *)&pMat->w1);
+                spolyvec6_invntt_tomont((spolyvec6 *)&pMat->w1);
+                /* reconstruct W1 */
+                spolyvec6_caddq((spolyvec6 *)&pMat->w1);
+                spolyvec6_use_hint((spolyvec6 *)&pMat->w1, (const spolyvec6 *)&pMat->w1,
+                                   (const spolyvec6 *)&pMat->h, K);
+                spolyvec6_pack_w1(w1pack, (const spolyvec6 *)&pMat->w1);
+                break;
+
+            case 8:
+                spolyvec8_shiftl((spolyvec8 *)&pMat->t1);
+                spolyvec8_ntt((spolyvec8 *)&pMat->t1);
+                spolyvec8_pointwise_poly_montgomery((spolyvec8 *)&pMat->t1, &pMat->cp,
+                                                    (const spolyvec8 *)&pMat->t1);
+                spolyvec8_sub((spolyvec8 *)&pMat->w1, (const spolyvec8 *)&pMat->w1,
+                              (const spolyvec8 *)&pMat->t1);
+                spolyvec8_reduce((spolyvec8 *)&pMat->w1);
+                spolyvec8_invntt_tomont((spolyvec8 *)&pMat->w1);
+                /* reconstruct W1 */
+                spolyvec8_caddq((spolyvec8 *)&pMat->w1);
+                spolyvec8_use_hint((spolyvec8 *)&pMat->w1, (const spolyvec8 *)&pMat->w1,
+                                   (const spolyvec8 *)&pMat->h, K);
+                spolyvec8_pack_w1(w1pack, (const spolyvec8 *)&pMat->w1);
+                break;
+            }
+
+            /* rho[ DIL_SEEDBYTES ] := CRH(mu[ DIL_CRHBYTES ], w1pack[w1pb])
+             * reusing already-idle rho[] which happens to share size
+             */
+            shake256_init(&pMat->state);
+            shake256_absorb(&pMat->state, mu, DIL_R3_CRHBYTES);
+            shake256_absorb(&pMat->state, w1pack, w1pb);
+            shake256_finalize(&pMat->state);
+            shake256_squeeze(rho, ctilbytes, &pMat->state);
+
+            sigb = 0;
+            for ( i = 0; i < ctilbytes; ++i ) {
+                sigb += !!(chash[i] == rho[i]);
+            }
+            rc = (sigb == ctilbytes);
+        }
+    }
+
+    MEMSET0_STRICT(pMat, sizeof(struct ver_mat));
+
+    return rc;
+}
+
+static int mldsa_verify(const void *pKey, const uint8_t *sig, size_t siglen, const uint8_t *m,
+                        size_t mlen, const uint8_t *pk, size_t pkbytes)
+{
+    return mldsa_verify_internal(pKey, sig, siglen, m, mlen, pk, pkbytes, mldsa_ds_pure, 2);
+}
 #endif /*-----  /delimiter: sign/verify  ------------------------------*/
 
 #if !defined(NO_CRYSTALS_CIP) || !defined(NO_CRYSTALS_KEX) /*-- Kyber ------*/
@@ -7505,6 +8316,18 @@ static void kyb_hash_h(unsigned char *h, const unsigned char *in, size_t ibytes)
 }
 
 //--------------------------------------
+static void mlkem_rkprf(uint8_t out[KYB_SHRDBYTES], const uint8_t key[KYB_SYMBYTES], const uint8_t* input, size_t ctsize)
+{
+    Keccak_state state;
+
+    shake256_init(&state);
+    shake256_absorb(&state, key, KYB_SYMBYTES);
+    shake256_absorb(&state, input, ctsize);
+    shake256_finalize(&state);
+    shake256_squeeze(out, KYB_SHRDBYTES, &state);
+}
+
+//--------------------------------------
 #define KYB_GEN_MATRIX_NBLOCKS                                                                 \
     ((2 * KYB_N * (1U << 16) / (19 * KYB_Q) + KYB_XOF_BLOCKBYTES) / KYB_XOF_BLOCKBYTES)
 
@@ -7564,7 +8387,7 @@ static void kyb_gen_matrix(kpolyvec_max *a, unsigned int k, const uint8_t seed[K
 static void r3_kyb_gen_matrix(kpolyvec_max *a, unsigned int k, const uint8_t seed[KYB_SYMBYTES],
                               int transposed)
 {
-    uint8_t      buf[KYBR3_GEN_MATRIX_NBLOCKS * KYB_XOF_BLOCKBYTES + 2] CRS_SENSITIVE;
+    uint8_t      buf[KYBR3_GEN_MATRIX_NBLOCKS * KYB_XOF_BLOCKBYTES] CRS_SENSITIVE;
     unsigned int ctr, i, j, l;
     unsigned int buflen, off;
     Keccak_state state;
@@ -7588,12 +8411,8 @@ static void r3_kyb_gen_matrix(kpolyvec_max *a, unsigned int k, const uint8_t see
             ctr    = r3_krej_uniform(a[i].vec[j].coeffs, KYB_N, buf, buflen);
 
             while ( ctr < KYB_N ) {
-                off = buflen % 3;
-                for ( l = 0; l < off; l++ )
-                    buf[l] = buf[buflen - off + l];
-
-                shake128_squeezeblocks(buf + off, 1, &state);
-                buflen = off + KYB_XOF_BLOCKBYTES;
+                shake128_squeezeblocks(buf, 1, &state);
+                buflen = KYB_XOF_BLOCKBYTES;
                 ctr += r3_krej_uniform(a[i].vec[j].coeffs + ctr, KYB_N - ctr, buf, buflen);
             }
         }
@@ -7810,6 +8629,127 @@ static int r3_indcpa_enc(uint8_t *c, size_t cbytes, const uint8_t m[KYB_INDCPA_M
         break;
     }
 
+    MEMSET0_STRICT(seed, sizeof(seed));
+
+    return rc;
+}
+
+static int mlkem_indcpa_enc(uint8_t *c, size_t cbytes, const uint8_t m[KYB_INDCPA_MSGBYTES],
+                            const uint8_t *pk, size_t pkbytes, const uint8_t coins[KYB_SYMBYTES],
+                            unsigned int kyb_k, int pkcheck)
+{
+    unsigned char seed[KYB_SYMBYTES] CRS_SENSITIVE;
+    kpolyvec_max  sp, pkpv, ep, at[KYB_VECT_MAX], bp;
+    uint8_t       nonce = 0;
+    unsigned int  i, notvalid;
+    kpoly         v, k, epp;
+    int           rc = 0;
+
+    (void)pkbytes;
+    (void)cbytes;
+
+    switch ( kyb_k ) {
+    case 3: r3_kunpack_pk3((kpolyvec3 *)&pkpv, seed, pk); break;
+    case 4: r3_kunpack_pk4((kpolyvec4 *)&pkpv, seed, pk); break;
+    }
+    if ( pkcheck ) {
+        /** 
+         *  FIPS203 Input validation
+         *  "ML-KEM.Encaps requires that the byte array containing the
+         *  encapsulation key correctly decodes to an array of integers
+         *  modulo 𝑞 without any modular reductions."
+         */
+        switch ( kyb_k ) {
+        case 3:
+            notvalid = mlkem_pack_check_pk3((kpolyvec3 *)&pkpv, pk);
+            break;
+        case 4: 
+            notvalid = mlkem_pack_check_pk4((kpolyvec4 *)&pkpv, pk);
+            break;
+        }
+
+        if (notvalid) {
+            rc = 0;
+            goto err;
+        }
+    }
+
+    kpoly_frommsg(&k, m);
+    R3_KYB_GEN_A_transposed(at, seed, kyb_k);
+
+    for ( i = 0; i < kyb_k; i++ )
+        r3_kpoly_getnoise_eta1(sp.vec + i, coins, nonce++);
+
+    for ( i = 0; i < kyb_k; i++ )
+        r3_kpoly_getnoise_eta2(ep.vec + i, coins, nonce++);
+
+    r3_kpoly_getnoise_eta2(&epp, coins, nonce++);
+
+    switch ( kyb_k ) {
+    case 3: r3_kpolyvec3_ntt((kpolyvec3 *)&sp); break;
+    case 4: r3_kpolyvec4_ntt((kpolyvec4 *)&sp); break;
+    }
+
+    // matrix-vector multiplication
+    for ( i = 0; i < kyb_k; i++ ) {
+        switch ( kyb_k ) {
+        case 3:
+            r3_kpolyvec3_basemul_acc_montgomery(&bp.vec[i], (const kpolyvec3 *)&at[i],
+                                                (const kpolyvec3 *)&sp);
+            break;
+        case 4:
+            r3_kpolyvec4_basemul_acc_montgomery(&bp.vec[i], (const kpolyvec4 *)&at[i],
+                                                (const kpolyvec4 *)&sp);
+            break;
+        }
+    }
+
+    switch ( kyb_k ) {
+    case 3:
+        r3_kpolyvec3_basemul_acc_montgomery(&v, (const kpolyvec3 *)&pkpv,
+                                            (const kpolyvec3 *)&sp);
+        r3_kpolyvec3_invntt_tomont((kpolyvec3 *)&bp);
+        break;
+    case 4:
+        r3_kpolyvec4_basemul_acc_montgomery(&v, (const kpolyvec4 *)&pkpv,
+                                            (const kpolyvec4 *)&sp);
+        r3_kpolyvec4_invntt_tomont((kpolyvec4 *)&bp);
+        break;
+    }
+
+    r3_kpoly_invntt_tomont(&v);
+
+    switch ( kyb_k ) {
+    case 3:
+        kpolyvec3_add((kpolyvec3 *)&bp, (const kpolyvec3 *)&bp, (const kpolyvec3 *)&ep);
+        break;
+    case 4:
+        kpolyvec4_add((kpolyvec4 *)&bp, (const kpolyvec4 *)&bp, (const kpolyvec4 *)&ep);
+        break;
+    }
+
+    kpoly_add(&v, &v, &epp);
+    kpoly_add(&v, &v, &k);
+
+    switch ( kyb_k ) {
+    case 3: r3_kpolyvec3_reduce((kpolyvec3 *)&bp); break;
+    case 4: r3_kpolyvec4_reduce((kpolyvec4 *)&bp); break;
+    }
+
+    r3_kpoly_reduce(&v);
+
+    switch ( kyb_k ) {
+    case 3:
+        r3_kpack_ciphertext3(c, (kpolyvec3 *)&bp, &v);
+        rc = (int)KYB_CIPHTXT3_BYTES;
+        break;
+    case 4:
+        r3_kpack_ciphertext4(c, (kpolyvec4 *)&bp, &v);
+        rc = (int)KYB_CIPHTXT4_BYTES;
+        break;
+    }
+
+err:
     MEMSET0_STRICT(seed, sizeof(seed));
 
     return rc;
@@ -8298,6 +9238,206 @@ static int dilr3_keygen(const void *pKey, unsigned char *prv, size_t prbytes,
 
     return (int)wrb;
 }
+
+/*--------------------------------------
+ * mldsa equivalent of dil_keygen()
+ *
+ * call only with mldsa OIDs; will reject other Dilithium variants
+ */
+static int dil_mldsa_keygen(const void *pKey, unsigned char *prv, size_t prbytes,
+                            unsigned char *pub, size_t *pbbytes, void *rng,
+                            const unsigned char *algid, size_t ibytes)
+{
+    const unsigned char *rho, *rhoprime, *key;
+    unsigned char        seedbuf[2 * DIL_SEEDBYTES + DIL_R3_CRHBYTES];
+    unsigned int         type, K, L, eta, round;
+    unsigned char        tr[DIL_MLDSA_TRBYTES];
+    size_t               wrb, wrpub;
+
+    struct keygen_mat {
+        spolyvec_max   mat[DIL_VECT_MAX];
+        spolyvec_maxm1 s1, s1hat;         /* L */
+        spolyvec_max   s2, t1, t0;        /* K */
+    };
+    struct keygen_mat mat, *pMat = &mat;
+    MARK_UNUSED(pKey);
+
+    type  = crs_oid2type(algid, ibytes);
+    round = dil_type2round(type);
+    K     = dil_type2k(type);
+    L     = dil_type2l(type);
+    eta   = dil_type2eta(type);
+    wrb   = dil_prv_wirebytes(K, L, round);
+
+    if ( 0 )
+        dr3_unused();
+
+    if ( !type || !K || !wrb || (round != 4) )
+        return MLCA_EKEYTYPE;
+    if ( !eta || (eta > 4) )
+        return MLCA_EINTERN;
+
+    if ( !(CRS_ALG_FL_SIG & crs_type2category(type)) )
+        return MLCA_EKEYMODE;
+
+    // size queries: NULL prv -> prvbytes, NULL pub -> pub.bytes
+    // 'prv' is checked first
+    if ( !prv )
+        return wrb;
+    if ( !pub )
+        return dil_pub_wirebytes(K, 0, round);
+
+    if ( !pbbytes )
+        return MLCA_EPARAM;
+
+    wrpub = dil_pub_wirebytes(K, L, round);
+
+    if ( (wrb > prbytes) || (wrpub > *pbbytes) )
+        return MLCA_ETOOSMALL;
+
+    /* do not mess with this buffer */
+    BUILD_ASSERT(sizeof(seedbuf) >= 3 * DIL_SEEDBYTES);
+
+    if ( randombytes(seedbuf, DIL_SEEDBYTES, rng) < DIL_SEEDBYTES )
+        return MLCA_ERNG;
+
+    /* Domain separation */
+    seedbuf[DIL_SEEDBYTES    ] = (uint8_t) K;
+    seedbuf[DIL_SEEDBYTES + 1] = (uint8_t) L;
+
+    shake256(seedbuf, 2 * DIL_SEEDBYTES + DIL_R3_CRHBYTES, seedbuf, DIL_SEEDBYTES + 2 );
+
+    rho      = seedbuf;
+    rhoprime = seedbuf + DIL_SEEDBYTES;
+    key      = seedbuf + DIL_SEEDBYTES + DIL_R3_CRHBYTES;
+
+
+    /* Expand matrix; sample short vectors s1 and s2
+     * iter.counts xL, xK, not a typo
+     */
+    switch ( K ) {
+    case 4:
+        expand_smatrix_4x4(pMat->mat, rho);
+        spolyvec4_uniform_eta((spolyvec4 *)&pMat->s1, rhoprime, 0, eta);
+        spolyvec4_uniform_eta((spolyvec4 *)&pMat->s2, rhoprime, L, eta);
+        break;
+
+    case 6:
+        expand_smatrix_6x5(pMat->mat, rho);
+        spolyvec5_uniform_eta((spolyvec5 *)&pMat->s1, rhoprime, 0, eta);
+        spolyvec6_uniform_eta((spolyvec6 *)&pMat->s2, rhoprime, L, eta);
+        break;
+
+    case 8:
+        expand_smatrix_8x7(pMat->mat, rho);
+        spolyvec7_uniform_eta((spolyvec7 *)&pMat->s1, rhoprime, 0, eta);
+        spolyvec8_uniform_eta((spolyvec8 *)&pMat->s2, rhoprime, L, eta);
+        break;
+    }
+    /* matrix-vector multiplication */
+    pMat->s1hat = pMat->s1;
+
+    switch ( K ) {
+    case 4:
+        spolyvec4_ntt((spolyvec4 *)&pMat->s1hat); /* xL, no typo */
+        spolyvec4x4_matrix_pointwise_montgomery((spolyvec4 *)&pMat->t1, pMat->mat,
+                                                (const spolyvec4 *)&pMat->s1hat);
+        spolyvec4_reduce((spolyvec4 *)&pMat->t1);
+        spolyvec4_invntt_tomont((spolyvec4 *)&pMat->t1);
+        break;
+
+    case 6:
+        spolyvec5_ntt((spolyvec5 *)&pMat->s1hat);
+        spolyvec6x5_matrix_pointwise_montgomery((spolyvec6 *)&pMat->t1, pMat->mat,
+                                                (const spolyvec5 *)&pMat->s1hat);
+        spolyvec6_reduce((spolyvec6 *)&pMat->t1);
+        spolyvec6_invntt_tomont((spolyvec6 *)&pMat->t1);
+        break;
+
+    case 8:
+        spolyvec7_ntt((spolyvec7 *)&pMat->s1hat);
+        spolyvec8x7_matrix_pointwise_montgomery((spolyvec8 *)&pMat->t1, pMat->mat,
+                                                (const spolyvec7 *)&pMat->s1hat);
+        spolyvec8_reduce((spolyvec8 *)&pMat->t1);
+        spolyvec8_invntt_tomont((spolyvec8 *)&pMat->t1);
+        break;
+
+    default: break;
+    }
+
+    /* Add error vector s2 (..._add()), then
+     * Extract t1 and write public key
+     */
+    switch ( K ) {
+    case 4:
+        spolyvec4_add((spolyvec4 *)&pMat->t1, (const spolyvec4 *)&pMat->t1,
+                      (const spolyvec4 *)&pMat->s2);
+        spolyvec4_caddq((spolyvec4 *)&pMat->t1);
+        spolyvec4_power2round((spolyvec4 *)&pMat->t1, (spolyvec4 *)&pMat->t0,
+                              (const spolyvec4 *)&pMat->t1);
+        break;
+
+    case 6:
+        spolyvec6_add((spolyvec6 *)&pMat->t1, (const spolyvec6 *)&pMat->t1,
+                      (const spolyvec6 *)&pMat->s2);
+        spolyvec6_caddq((spolyvec6 *)&pMat->t1);
+        spolyvec6_power2round((spolyvec6 *)&pMat->t1, (spolyvec6 *)&pMat->t0,
+                              (const spolyvec6 *)&pMat->t1);
+        break;
+
+    case 8:
+        spolyvec8_add((spolyvec8 *)&pMat->t1, (const spolyvec8 *)&pMat->t1,
+                      (const spolyvec8 *)&pMat->s2);
+        spolyvec8_caddq((spolyvec8 *)&pMat->t1);
+        spolyvec8_power2round((spolyvec8 *)&pMat->t1, (spolyvec8 *)&pMat->t0,
+                              (const spolyvec8 *)&pMat->t1);
+        break;
+    }
+
+    /* opportunistic: write trailing type bytes */
+    if ( wrpub + CRS_WTYPE_BYTES <= *pbbytes )
+        MSBF4_WRITE(pub + wrpub, (uint32_t)(type | MLCA_IDP_PUBLIC));
+
+    *pbbytes = wrpub;
+
+    switch ( K ) {
+    case 4: spack_pk4(pub, rho, (const spolyvec4 *)&pMat->t1); break;
+    case 6: spack_pk6(pub, rho, (const spolyvec6 *)&pMat->t1); break;
+    case 8: spack_pk8(pub, rho, (const spolyvec8 *)&pMat->t1); break;
+    default: break;
+    }
+
+    /* Compute H(rho, t1) and write priv. key */
+
+    shake256(tr, DIL_MLDSA_TRBYTES, pub, *pbbytes);
+
+    switch ( K ) {
+    case 4:
+        ml_spack_prv4(prv, rho, key, tr, (const spolyvec4 *)&pMat->s1,
+                   (const spolyvec4 *)&pMat->s2, (const spolyvec4 *)&pMat->t0);
+        break;
+    case 6:
+        ml_spack_prv6(prv, rho, key, tr, (const spolyvec5 *)&pMat->s1,
+                   (const spolyvec6 *)&pMat->s2, (const spolyvec6 *)&pMat->t0);
+        break;
+    case 8:
+        ml_spack_prv8(prv, rho, key, tr, (const spolyvec7 *)&pMat->s1,
+                   (const spolyvec8 *)&pMat->s2, (const spolyvec8 *)&pMat->t0);
+        break;
+    default: break;
+    }
+
+    /* opportunistic: write trailing type bytes */
+    if ( wrb + CRS_WTYPE_BYTES <= prbytes )
+        MSBF4_WRITE(prv + wrb, (uint32_t)type);
+
+    MEMSET(pMat, 0, sizeof(struct keygen_mat));
+    MEMSET(seedbuf, 0, sizeof(seedbuf));
+    MEMSET(tr, 0, sizeof(tr));
+
+
+    return (int)wrb;
+}
 #endif /*-----  /delimiter: sign/verify  ------------------------------*/
 
 #if !defined(NO_CRYSTALS_CIP) || !defined(NO_CRYSTALS_KEX) /*-- Kyber ------*/
@@ -8311,32 +9451,41 @@ static int dilr3_keygen(const void *pKey, unsigned char *prv, size_t prbytes,
  *              - uint8_t *sk: pointer to output private key
  *                             (of length KYB_INDCPA_SECRETKEYBYTES bytes)
  **************************************************/
-static int kyb_keygen(unsigned char *prv, size_t prvbytes, unsigned char *pub, size_t *pbytes,
-                      void *rng, const unsigned char *algid, size_t ibytes)
+static int kyb_keygen_derand(unsigned char *prv, size_t prvbytes, unsigned char *pub, size_t *pbytes,
+                             uint8_t *coins, const unsigned char *algid, size_t ibytes)
 {
     uint8_t buf[2 * KYB_SYMBYTES] CRS_SENSITIVE;
+
     // noise[32] || pub.seed[32]; MUST be consecutive
     kpolyvec_max   a[KYB_VECT_MAX], e, pkpv, skpv;
-    const uint8_t *noiseseed  = buf + KYB_SYMBYTES;
+    const uint8_t *noiseseed;
     const uint8_t *publicseed = buf;
-    unsigned int   i, type, k;
+    unsigned int   i, type, k, round;
     size_t         pubb, prvb;
     uint8_t        nonce = 0;
 
-    type = crs_oid2type(algid, ibytes);
-    k    = kyb_type2k(type);
+    type  = crs_oid2type(algid, ibytes);
+    k     = kyb_type2k(type);
+    round = kyb_type2round(type);
 
     if ( !type || !k )
         return MLCA_EKEYTYPE;
     if ( !((CRS_ALG_FL_KEX | CRS_ALG_FL_CIP) & crs_type2category(type)) )
         return MLCA_EKEYMODE;
 
-    if ( randombytes(buf, KYB_SYMBYTES, rng) < KYB_SYMBYTES )
-        return MLCA_ERNG;
+    /* Add domain separation byte to seed: Alg 13 in FIPS203 // without the check it's ML-KEM-ipd */
+    if (round == 4) {
+        MEMCPY(buf, coins, KYB_SYMBYTES);
+        buf[KYB_SYMBYTES] = (uint8_t) k;
+        noiseseed = buf + KYB_SYMBYTES;
+        kyb_hash_g(buf, buf, KYB_SYMBYTES + 1);  // PRF[32+1] -> PRF[64]
+    } else {
+        MEMCPY(buf, coins, KYB_SYMBYTES);
+        noiseseed = buf + KYB_SYMBYTES;
+        kyb_hash_g(buf, buf, KYB_SYMBYTES);  // PRF[32] -> PRF[64]
+    }
 
-    kyb_hash_g(buf, buf, KYB_SYMBYTES);  // PRF[32] -> PRF[64]
 
-    // please do not complain about repeated lookup calls
     prvb = kyb_prv_wirebytes(k, 1 /* full */);
     pubb = kyb_pub_wirebytes(k);
 
@@ -8402,6 +9551,7 @@ static int kyb_keygen(unsigned char *prv, size_t prvbytes, unsigned char *pub, s
         }
         break;
     case 3:
+    case 4:
         R3_KYB_GEN_A(a, publicseed, k);
 
         for ( i = 0; i < k; i++ )
@@ -8476,8 +9626,10 @@ static int kyb_keygen(unsigned char *prv, size_t prvbytes, unsigned char *pub, s
 
         kyb_hash_h(prv + prv0b + pubb, pub, pubb);
 
-        if ( randombytes(prv + prvb - KYB_SYMBYTES, KYB_SYMBYTES, rng) < KYB_SYMBYTES )
-            return MLCA_ERNG;
+        MEMCPY(prv + prvb - KYB_SYMBYTES, coins + KYB_SYMBYTES, KYB_SYMBYTES);
+
+        //if ( randombytes(prv + prvb - KYB_SYMBYTES, KYB_SYMBYTES, rng) < KYB_SYMBYTES )
+        //    return MLCA_ERNG;
     }
 
     /* opportunistic: write trailing type bytes */
@@ -8485,9 +9637,41 @@ static int kyb_keygen(unsigned char *prv, size_t prvbytes, unsigned char *pub, s
         MSBF4_WRITE(prv + prvb, (uint32_t)type);
 
     MEMSET0_STRICT(buf, sizeof(buf));
+    MEMSET0_STRICT(coins, sizeof(coins));
 
     return 0;
 }
+
+static int kyb_keygen(unsigned char *prv, size_t prvbytes, unsigned char *pub, size_t *pbytes,
+                      void *rng, const unsigned char *algid, size_t ibytes)
+{
+    uint8_t coins[2 * KYB_SYMBYTES]; // provided on the derandomized interface.
+    // noise[32] || pub.seed[32]; MUST be consecutive
+    unsigned int   i, type, k, round;
+
+    type  = crs_oid2type(algid, ibytes);
+    k     = kyb_type2k(type);
+    round = kyb_type2round(type);
+
+    if ( !type || !k )
+        return MLCA_EKEYTYPE;
+    if ( !((CRS_ALG_FL_KEX | CRS_ALG_FL_CIP) & crs_type2category(type)) )
+        return MLCA_EKEYMODE;
+
+    /* Add domain separation byte to seed: Alg 13 in FIPS203 // without the check it's ML-KEM-ipd */
+    if (round == 4) {
+        if ( randombytes(coins, 2*KYB_SYMBYTES, rng) < KYB_SYMBYTES )
+            return MLCA_ERNG;
+    } else {
+        if ( randombytes(coins, KYB_SYMBYTES, rng) < KYB_SYMBYTES )
+            return MLCA_ERNG;
+        if ( randombytes(coins + KYB_SYMBYTES, KYB_SYMBYTES, rng) < KYB_SYMBYTES )
+            return MLCA_ERNG;
+    }
+
+    return kyb_keygen_derand(prv, prvbytes, pub, pbytes, coins, algid, ibytes);
+}
+
 
 #endif /*-----  /delimiter: Kyber  ------------------------------------*/
 
@@ -8504,13 +9688,13 @@ static int kyb_keygen(unsigned char *prv, size_t prvbytes, unsigned char *pub, s
  *                (an already allocated array of CRYPTO_PUBLICKEYBYTES bytes)
  * Returns >0 (success; written bytecount at start of (ct)) or <0 for errors
  **************************************************/
-static int kyb_kem1(unsigned char *ct, size_t cbytes, unsigned char *shrd, size_t *shbytes,
-                    const unsigned char *pub, size_t pbytes, void *rng,
-                    const unsigned char *algid, size_t ibytes)
+static int kyb_kem1_derand(unsigned char *ct, size_t cbytes, unsigned char *shrd, size_t *shbytes,
+                           const unsigned char *pub, size_t pbytes, uint8_t *coins,
+                           const unsigned char *algid, size_t ibytes)
 {
     unsigned char buf[2 * KYB_SYMBYTES];
     unsigned char kr[2 * KYB_SYMBYTES] CRS_SENSITIVE;
-    unsigned int  type = 0, k;
+    unsigned int  type = 0, k, round;
     size_t        pubb, ctxtb;
 
     if ( algid && ibytes ) {
@@ -8524,6 +9708,10 @@ static int kyb_kem1(unsigned char *ct, size_t cbytes, unsigned char *shrd, size_
     k     = kyb_type2k(type);
     pubb  = kyb_pub_wirebytes(k);
     ctxtb = kyb_ctext_wirebytes(k);
+    round = kyb_type2round(type);
+
+    if (round < 2 || round > 4)
+        return MLCA_ENSUPPORT;
 
     if ( !pubb || !ctxtb || (pubb != pbytes) ) /* catches unknown type */
         return MLCA_EKEYTYPE;
@@ -8544,11 +9732,12 @@ static int kyb_kem1(unsigned char *ct, size_t cbytes, unsigned char *shrd, size_
     }
     *shbytes = KYB_SHRDBYTES;
 
-    if ( randombytes(buf, KYB_SYMBYTES, rng) < KYB_SYMBYTES )
-        return MLCA_ERNG;
+    MEMCPY(buf, coins, KYB_SYMBYTES);
 
-    /* Do not release system RNG output */
-    kyb_hash_h(buf, buf, KYB_SYMBYTES);
+    if (round < 4) {
+        /* Do not release system RNG output */
+       kyb_hash_h(buf, buf, KYB_SYMBYTES);
+    }
 
     /* Multitarget countermeasure for coins + contributory KEM */
     kyb_hash_h(buf + KYB_SYMBYTES, pub, pbytes);
@@ -8560,20 +9749,48 @@ static int kyb_kem1(unsigned char *ct, size_t cbytes, unsigned char *shrd, size_
     switch ( kyb_type2round(type) ) {
     case 2: indcpa_enc(ct, cbytes, buf, pub, pbytes, kr + KYB_SYMBYTES, k); break;
     case 3: r3_indcpa_enc(ct, cbytes, buf, pub, pbytes, kr + KYB_SYMBYTES, k); break;
+    case 4: mlkem_indcpa_enc(ct, cbytes, buf, pub, pbytes, kr + KYB_SYMBYTES, k, 1); break;
     default:  // nop
         break;
     }
 
-    /* overwrite coins in kr with H(c) */
+    if (round < 4) {
+        /* overwrite coins in kr with H(c) */
+        kyb_hash_h(kr + KYB_SYMBYTES, ct, ctxtb);
 
-    kyb_hash_h(kr + KYB_SYMBYTES, ct, ctxtb);
+        /* hash concatenation of pre-k and H(c) to k */
+        /* kdf(ss, kr, 2*KYB_SYMBYTES); */
+        shake256(shrd, KYB_SHRDBYTES, kr, 2 * KYB_SYMBYTES);
+    } else {
 
-    /* hash concatenation of pre-k and H(c) to k */
-    /* kdf(ss, kr, 2*KYB_SYMBYTES); */
-
-    shake256(shrd, KYB_SHRDBYTES, kr, 2 * KYB_SYMBYTES);
+        /** 
+         * FIPS 204: 
+         * "... , ML-KEM.Encaps no longer includes a hash of the ciphertext in the
+         * derivation of the shared secret"
+         */
+        MEMCPY(shrd, kr, KYB_SYMBYTES);
+    }    
 
     return (int)ctxtb;
+}
+
+static int kyb_kem1(unsigned char *ct, size_t cbytes, unsigned char *shrd, size_t *shbytes,
+                    const unsigned char *pub, size_t pbytes, void *rng,
+                    const unsigned char *algid, size_t ibytes)
+{
+    int rc = 0;
+    uint8_t coins[KYB_SYMBYTES];
+
+    if ( randombytes(coins, KYB_SYMBYTES, rng) < KYB_SYMBYTES ) {
+        rc = MLCA_ERNG;
+        goto err;
+    }
+
+    rc = kyb_kem1_derand(ct, cbytes, shrd, shbytes, pub, pbytes, coins, algid, ibytes);
+
+err:
+    MEMSET0_STRICT(coins, KYB_SYMBYTES);
+    return rc;
 }
 
 /*************************************************
@@ -8639,7 +9856,7 @@ static int kyb_kem2(unsigned char *shared, size_t sbytes, const unsigned char *c
     uint8_t       cmp[KYB_CIPHERTXT_MAX_BYTES];
     unsigned char buf[2 * KYB_SYMBYTES];
     unsigned char kr[2 * KYB_SYMBYTES] CRS_SENSITIVE;
-    unsigned int  k, type = 0;
+    unsigned int  k, type = 0, round;
     size_t        i, ctxtb, prvb;
     int           fail = 0;
 
@@ -8654,6 +9871,10 @@ static int kyb_kem2(unsigned char *shared, size_t sbytes, const unsigned char *c
     k     = kyb_type2k(type);
     prvb  = kyb_prv_wirebytes(k, 1);
     ctxtb = kyb_ctext_wirebytes(k);
+    round = kyb_type2round(type);
+
+    if (round < 2 || round > 4)
+        return MLCA_ENSUPPORT;
 
     if ( !prvb || !ctxtb || (prvb != pbytes) ) /* catches unknown type */
         return MLCA_EKEYTYPE;
@@ -8668,9 +9889,17 @@ static int kyb_kem2(unsigned char *shared, size_t sbytes, const unsigned char *c
         return MLCA_ETOOSMALL;
     }
 
-    switch ( kyb_type2round(type) ) {
+    if (round >= 4) {
+        /* Hash check: required in FIPS 203 */
+        kyb_hash_h(buf, prv + 384*k, 768*k + 32 - 384*k);
+        if ( kyb_verify(buf, prv + 768*k + 32, 32) )
+            return MLCA_EKEYTYPE;
+    }
+
+    switch ( round ) {
     case 2: indcpa_dec(buf, ct, cbytes, prv, k); break;
-    case 3: r3_indcpa_dec(buf, ct, cbytes, prv, k); break;
+    case 3:
+    case 4: r3_indcpa_dec(buf, ct, cbytes, prv, k); break;
     default:  // nop
         break;
     }
@@ -8685,7 +9914,7 @@ static int kyb_kem2(unsigned char *shared, size_t sbytes, const unsigned char *c
     /* +...wirebytes...: skip to pub.key within prv */
     /* coins are in kr+KYB_SYMBYTES */
 
-    switch ( kyb_type2round(type) ) {
+    switch ( round ) {
     case 2:
         indcpa_enc(cmp, sizeof(cmp), buf, prv + kyb_prv_wirebytes(k, 0), kyb_pub_wirebytes(k),
                    kr + KYB_SYMBYTES, k);
@@ -8694,21 +9923,32 @@ static int kyb_kem2(unsigned char *shared, size_t sbytes, const unsigned char *c
         r3_indcpa_enc(cmp, sizeof(cmp), buf, prv + kyb_prv_wirebytes(k, 0),
                       kyb_pub_wirebytes(k), kr + KYB_SYMBYTES, k);
         break;
+    case 4:
+        mlkem_indcpa_enc(cmp, sizeof(cmp), buf, prv + kyb_prv_wirebytes(k, 0),
+                         kyb_pub_wirebytes(k), kr + KYB_SYMBYTES, k, 0);
+        break;
     default:  // nop
         break;
     }
 
     fail = kyb_verify(ct, cmp, ctxtb);
 
-    /* overwrite coins in kr with H(c) */
+    if (round < 4) {
+        /* overwrite coins in kr with H(c) */
+        kyb_hash_h(kr + KYB_SYMBYTES, ct, ctxtb);
 
-    kyb_hash_h(kr + KYB_SYMBYTES, ct, ctxtb);
+        /* Overwrite pre-k with z on re-encryption failure */
+        kyb_cmov(kr, prv + pbytes - KYB_SYMBYTES, KYB_SYMBYTES, fail);
 
-    /* Overwrite pre-k with z on re-encryption failure */
-    kyb_cmov(kr, prv + pbytes - KYB_SYMBYTES, KYB_SYMBYTES, fail);
-
-    /* hash concatenation of pre-k and H(c) to k */
-    shake256(shared, KYB_SHRDBYTES, kr, 2 * KYB_SYMBYTES);
+        /* hash concatenation of pre-k and H(c) to k */
+        shake256(shared, KYB_SHRDBYTES, kr, 2 * KYB_SYMBYTES);
+    } else {
+        /* Updated FO in FIPS 203 */
+        /* Compute rejection key */
+        mlkem_rkprf(shared, prv + pbytes - KYB_SYMBYTES, ct, ctxtb);
+        /* Overwrite pre-k with z on re-encryption failure */
+        kyb_cmov(shared, kr, KYB_SYMBYTES, !fail);
+    }
 
     return KYB_SHRDBYTES;
 }
@@ -8725,6 +9965,7 @@ int __mlca_generate(const void *pKey, unsigned char *prv, size_t prvbytes, unsig
 {
     unsigned int cat, type;
     int          rc = 0;
+    int          round = 0;
 
     if ( !prv || !prvbytes || !pub || !pubbytes )
         return 0;
@@ -8735,10 +9976,15 @@ int __mlca_generate(const void *pKey, unsigned char *prv, size_t prvbytes, unsig
     do {
 #if !defined(NO_CRYSTALS_SIG)
         if ( CRS_ALG_FL_SIG & cat ) {
-            if ( dil_type2round(type) == 2 ) {
+            round = dil_type2round(type);
+            if ( round == 2 ) {
                 rc = dil_keygen(pKey, prv, prvbytes, pub, pubbytes, rng, algid, ibytes);
-            } else {
+            } else if ( round == 3 ) {
                 rc = dilr3_keygen(pKey, prv, prvbytes, pub, pubbytes, rng, algid, ibytes);
+            } else if ( round == 4 ) {
+                rc = dil_mldsa_keygen(pKey, prv, prvbytes, pub, pubbytes, rng, algid, ibytes);
+            } else {
+                return 0;
             }
             break;
         }
@@ -8769,36 +10015,96 @@ int mlca_generate(unsigned char *prv, size_t prvbytes, unsigned char *pub,
 CRS_STATIC
 /*-----  delimiter: mlca_sign ----------------------*/
 int __mlca_sign(const void *pKey, unsigned char *sig, size_t sbytes, const unsigned char *msg,
-              size_t mbytes, const unsigned char *prv, size_t pbytes,
+              size_t mbytes, const unsigned char *prv, size_t pbytes, void *rng,
               const unsigned char *algid, size_t ibytes)
 {
     unsigned int round;
     int          v;
+    unsigned int type = 0;
 
     if ( !sig || !sbytes || !msg || !mbytes || !prv || !pbytes )
         (void)0;
 
-    round = dil_type2round(dil__prvbytes2type(pbytes));
-    if ( (round < 2) || (round > 3) )
+    if ( algid && ibytes ) {
+        type = crs_oid2type(algid, ibytes);
+    } else { // Only supported for round 2 and round 3
+        type = dil_sigbytes2type(sbytes);
+    }
+
+    round = dil_type2round(type);
+    if ( (round < 2) || (round > 4) )
         return 0;
 
-    (void)algid;
-    (void)ibytes;
+    if ( round == 2 ) {
+        v = r2_sign(pKey, sig, sbytes, msg, mbytes, prv, pbytes, 0);
 
-    v = (round == 3) ? r3_sign(pKey, sig, sbytes, msg, mbytes, prv, pbytes, 0)
-                     : r2_sign(pKey, sig, sbytes, msg, mbytes, prv, pbytes, 0);
+    } else if ( round == 3 ) {
+        v = r3_sign(pKey, sig, sbytes, msg, mbytes, prv, pbytes, 0);
+
+    } else if ( round == 4 ) {
+        v = mldsa_sign(pKey, sig, sbytes, msg, mbytes, prv, pbytes, 0, rng);
+        
+    } else {
+        /* ...does not correspond to any known type... */
+    }
 
     return v;
 }
 CRS_STATIC
 /**/
 int mlca_sign(unsigned char *sig, size_t sbytes, const unsigned char *msg,
-              size_t mbytes, const unsigned char *prv, size_t pbytes,
+              size_t mbytes, const unsigned char *prv, size_t pbytes, void *rng,
               const unsigned char *algid, size_t ibytes)
 {
-    return __mlca_sign(0, sig, sbytes, msg, mbytes, prv, pbytes, algid, ibytes);
+    return __mlca_sign(0, sig, sbytes, msg, mbytes, prv, pbytes, rng, algid, ibytes);
 }
 /*-----  /delimiter: mlca_sign ----------------------*/
+
+/*------------------------------------*/
+CRS_STATIC
+/*-----  delimiter: mlca_sign_internal ----------------------*/
+int __mlca_sign_internal(const void *pKey, unsigned char *sig, size_t sbytes, const unsigned char *msg,
+                       size_t mbytes, const unsigned char *prv, size_t pbytes, void *rng,
+                       const unsigned char *algid, size_t ibytes)
+{
+    unsigned int round;
+    int          v;
+    unsigned int type = 0;
+
+    uint8_t coins[DIL_MLDSA_RNDBYTES];
+
+    if ( !sig || !sbytes || !msg || !mbytes || !prv || !pbytes || !rng )
+        (void)0;
+
+    if ( algid && ibytes ) {
+        type = crs_oid2type(algid, ibytes);
+    } else { // Only supported for round 2 and round 3
+        type = dil_sigbytes2type(sbytes);
+    }
+
+    round = dil_type2round(type);
+    if ( round != 4 ) {
+        return 0;
+    } else {
+        randombytes(coins, DIL_MLDSA_RNDBYTES, rng);
+
+        v = mldsa_sign_internal(pKey, sig, sbytes, msg, mbytes, prv, pbytes, 0, 0, 0, coins);
+    }
+
+    MEMSET0_STRICT(coins, DIL_MLDSA_RNDBYTES);
+
+    return v;
+}
+CRS_STATIC
+/**/
+int mlca_sign_internal(unsigned char *sig, size_t sbytes, const unsigned char *msg,
+                       size_t mbytes, const unsigned char *prv, size_t pbytes,
+                       void *rng,
+                       const unsigned char *algid, size_t ibytes)
+{
+    return __mlca_sign_internal(0, sig, sbytes, msg, mbytes, prv, pbytes, rng, algid, ibytes);
+}
+/*-----  /delimiter: mlca_sign_internal ----------------------*/
 
 /*------------------------------------*/
 CRS_STATIC
@@ -8809,14 +10115,21 @@ int __mlca_verify(const void *pKey, const unsigned char *sig, size_t sbytes,
 {
     unsigned int round;
     int          v = 0;
+    unsigned int type = 0;
+
 
     if ( !sig || !sbytes || !msg || !mbytes || !pub || !pbytes )
         (void)0;
 
-    (void)algid;
-    (void)ibytes;
+    if ( algid && ibytes ) {
+        type = crs_oid2type(algid, ibytes);
+    } else { // Only supported for round 2 and round 3
+        type = dil_sigbytes2type(sbytes);
+    }
 
-    round = dil_type2round(dil_sigbytes2type(sbytes));
+    round = dil_type2round(type);
+    if ( (round < 2) || (round > 4) )
+        return 0;
 
     // ...type cross-check...
 
@@ -8825,6 +10138,9 @@ int __mlca_verify(const void *pKey, const unsigned char *sig, size_t sbytes,
 
     } else if ( round == 3 ) {
         v = r3_verify(pKey, sig, sbytes, msg, mbytes, pub, pbytes);
+
+    } else if ( round == 4 ) {
+        v = mldsa_verify(pKey, sig, sbytes, msg, mbytes, pub, pbytes);
 
     } else {
         /* ...does not correspond to any known type... */
@@ -8840,6 +10156,45 @@ int mlca_verify(const unsigned char *sig, size_t sbytes,
     return __mlca_verify(0, sig, sbytes, msg, mbytes, pub, pbytes, algid, ibytes);
 }
 /*-----  /delimiter: mlca_verify ----------------------*/
+
+/*------------------------------------*/
+CRS_STATIC
+/*-----  delimiter: mlca_verify_internal ----------------------*/
+int __mlca_verify_internal(const void *pKey, const unsigned char *sig, size_t sbytes,
+                const unsigned char *msg, size_t mbytes, const unsigned char *pub,
+                size_t pbytes, const unsigned char *algid, size_t ibytes)
+{
+    unsigned int round;
+    int          v = 0;
+    unsigned int type = 0;
+
+
+    if ( !sig || !sbytes || !msg || !mbytes || !pub || !pbytes )
+        (void)0;
+
+    if ( algid && ibytes ) {
+        type = crs_oid2type(algid, ibytes);
+    } else { // Only supported for round 2 and round 3
+        type = dil_sigbytes2type(sbytes);
+    }
+
+    round = dil_type2round(type);
+    if ( round != 4 ) {
+        return 0;
+    } else {
+        v = mldsa_verify_internal(pKey, sig, sbytes, msg, mbytes, pub, pbytes, 0, 0);
+    }
+
+    return v;
+}
+CRS_STATIC
+/**/
+int mlca_verify_internal(const unsigned char *sig, size_t sbytes,
+                         const unsigned char *msg, size_t mbytes, const unsigned char *pub,
+                         size_t pbytes, const unsigned char *algid, size_t ibytes) {
+    return __mlca_verify_internal(0, sig, sbytes, msg, mbytes, pub, pbytes, algid, ibytes);
+}
+/*-----  /delimiter: mlca_verify_internal ----------------------*/
 
 
 #if !defined(NO_CRYSTALS_KEX) /*-- Kyber, key agreement  ------------------*/
@@ -8947,3 +10302,4 @@ int mlca_wire2key(unsigned char *key, size_t kbytes, unsigned int *type,
 #endif /*-----  /delimiter: PKCS11 wrappers  --------------------------*/
 
 #endif /* !MLCA__IMPL_H__ */
+

@@ -1,15 +1,19 @@
 # MLCA
 
-This projects contains implementations and tests for Module-Lattice Cryptographic Algorithms (MLCA).
+This project contains implementations and tests for Module-Lattice Cryptographic Algorithms (MLCA).
 
 ## Algorithms
 
+- ML-KEM (FIPS 203)
+- ML-DSA (FIPS 204)
 - Dilithium (NIST PQC round 2 and 3)
 - Kyber (NIST PQC round 2 and 3)
 
 The following variants are available:
+- ML-DSA-44, ML-DSA-65, ML-DSA-87 (Pure variants)
 - Dilithium2, Dilithium3, Dilithium5 (Round 3)
 - Dilithium5x4, Dilithium6x5, Dilithium8x7 (Round 2)
+- ML-KEM-768, ML-KEM-1024
 - Kyber768, Kyber1024 (Round 2 and Round 3)
 
 ## Requirements
@@ -40,9 +44,11 @@ To clean a build do a `make clean` inside the build folder.
 
 ## Tests
 
-The following tests are available: NIST KAT, Chained KAT, random self-tests, constant-time tests and performance tests.
+The following tests are available: NIST KAT, Chained KAT, NIST ACVP, random self-tests, constant-time tests and performance tests.
 
 To run the complete test harness, run `ctest`.
+
+NIST ACVP static test vectors can be downloaded from the [ACVP-Server](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files) repository. Run the tests with `python3 test/test_acvp.py`.
 
 ### NIST KAT
 

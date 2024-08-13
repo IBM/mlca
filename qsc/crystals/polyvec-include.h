@@ -1822,6 +1822,44 @@ spack_prv4(unsigned char prv[ DIL_R3_PRV4x4_BYTES ],
 	}
 }
 
+/*------------------------------------*/
+static void 
+ml_spack_prv4(unsigned char prv[ DIL_MLDSA_PRV4x4_BYTES ],
+     const unsigned char rho[ DIL_SEEDBYTES ],
+     const unsigned char key[ DIL_SEEDBYTES ],
+     const unsigned char tr [ DIL_MLDSA_TRBYTES ],
+         const spolyvec4 *s1,
+         const spolyvec4 *s2,
+         const spolyvec4 *t0)
+{
+	unsigned int i;
+
+	memmove(prv, rho, DIL_SEEDBYTES);
+	prv += DIL_SEEDBYTES;
+
+	memmove(prv, key, DIL_SEEDBYTES);
+	prv += DIL_SEEDBYTES;
+
+	memmove(prv, tr,  DIL_MLDSA_TRBYTES);
+	prv += DIL_MLDSA_TRBYTES;
+
+	for (i = 0; i < 4; ++i) {
+		spolyeta_pack(prv +i *DIL_R3_POLYETA4x4_PACKEDBYTES,
+		              &(s1->vec[i]), 2 /* eta(K=4) */);
+	}
+	prv += 4 * DIL_R3_POLYETA4x4_PACKEDBYTES;  /*L*/
+
+	for (i = 0; i < 4; ++i) {
+		spolyeta_pack(prv +i *DIL_R3_POLYETA4x4_PACKEDBYTES,
+		              &(s2->vec[i]), 2 /* eta(k=4) */);
+	}
+	prv += 4 * DIL_R3_POLYETA4x4_PACKEDBYTES;  /*K*/
+
+	for (i = 0; i < 4; ++i) {
+		spolyt0_pack(prv +i *DIL_R3_POLYT0_PACKEDBYTES, &(t0->vec[i]));
+	}
+}
+
 
 /*------------------------------------*/
 static void 
@@ -1843,6 +1881,43 @@ sunpack_prv4(unsigned char rho[ DIL_SEEDBYTES ],
 
 	memmove(tr, prv,  DIL_SEEDBYTES);
 	prv += DIL_SEEDBYTES;
+
+	for (i = 0; i < 4; ++i) {
+		spolyeta_unpack(&( s1->vec[i] ),
+		                prv +i *DIL_R3_POLYETA4x4_PACKEDBYTES, 2);
+	}
+	prv += 4 * DIL_R3_POLYETA4x4_PACKEDBYTES;  /*L*/
+	
+	for (i = 0; i < 4; ++i) {
+		spolyeta_unpack(&( s2->vec[i] ),
+		                prv +i *DIL_R3_POLYETA4x4_PACKEDBYTES, 2);
+	}
+	prv += 4 * DIL_R3_POLYETA4x4_PACKEDBYTES;  /*K*/
+	
+	for (i = 0; i < 4; ++i) {
+		spolyt0_unpack(&( t0->vec[i] ), prv +i *DIL_R3_POLYT0_PACKEDBYTES);
+	}
+}
+
+static void 
+ml_sunpack_prv4(unsigned char rho[ DIL_SEEDBYTES ],
+             unsigned char key[ DIL_SEEDBYTES ],
+             unsigned char tr [ DIL_MLDSA_TRBYTES ],
+                 spolyvec4 *s1,
+                 spolyvec4 *s2,
+                 spolyvec4 *t0,
+       const unsigned char prv[ DIL_MLDSA_PRV4x4_BYTES ])
+{
+	unsigned int i;
+
+	memmove(rho, prv, DIL_SEEDBYTES);
+	prv += DIL_SEEDBYTES;
+
+	memmove(key, prv, DIL_SEEDBYTES);
+	prv += DIL_SEEDBYTES;
+
+	memmove(tr, prv,  DIL_MLDSA_TRBYTES);
+	prv += DIL_MLDSA_TRBYTES;
 
 	for (i = 0; i < 4; ++i) {
 		spolyeta_unpack(&( s1->vec[i] ),
@@ -1929,6 +2004,43 @@ spack_prv6(unsigned char prv[ DIL_R3_PRV6x5_BYTES ],
 	}
 }
 
+static void 
+ml_spack_prv6(unsigned char prv[ DIL_MLDSA_PRV6x5_BYTES ],
+     const unsigned char rho[ DIL_SEEDBYTES ],
+     const unsigned char key[ DIL_SEEDBYTES ],
+     const unsigned char tr [ DIL_MLDSA_TRBYTES ],
+         const spolyvec5 *s1,
+         const spolyvec6 *s2,
+         const spolyvec6 *t0)
+{
+	unsigned int i;
+
+	memmove(prv, rho, DIL_SEEDBYTES);
+	prv += DIL_SEEDBYTES;
+
+	memmove(prv, key, DIL_SEEDBYTES);
+	prv += DIL_SEEDBYTES;
+
+	memmove(prv, tr,  DIL_MLDSA_TRBYTES);
+	prv += DIL_MLDSA_TRBYTES;
+
+	for (i = 0; i < 5; ++i) {
+		spolyeta_pack(prv +i *DIL_R3_POLYETA6x5_PACKEDBYTES,
+		              &(s1->vec[i]), 4 /* eta(K=6) */);
+	}
+	prv += 5 * DIL_R3_POLYETA6x5_PACKEDBYTES;  /*L*/
+
+	for (i = 0; i < 6; ++i) {
+		spolyeta_pack(prv +i *DIL_R3_POLYETA6x5_PACKEDBYTES,
+		              &(s2->vec[i]), 4 /* eta(k=6) */);
+	}
+	prv += 6 * DIL_R3_POLYETA6x5_PACKEDBYTES;  /*K*/
+
+	for (i = 0; i < 6; ++i) {
+		spolyt0_pack(prv +i *DIL_R3_POLYT0_PACKEDBYTES, &(t0->vec[i]));
+	}
+}
+
 
 /*------------------------------------*/
 static void 
@@ -1950,6 +2062,43 @@ sunpack_prv6(unsigned char rho[ DIL_SEEDBYTES ],
 
 	memmove(tr, prv,  DIL_SEEDBYTES);
 	prv += DIL_SEEDBYTES;
+
+	for (i = 0; i < 5; ++i) {
+		spolyeta_unpack(&( s1->vec[i] ),
+		                prv +i *DIL_R3_POLYETA6x5_PACKEDBYTES, 4);
+	}
+	prv += 5 * DIL_R3_POLYETA6x5_PACKEDBYTES;  /*L*/
+	
+	for (i = 0; i < 6; ++i) {
+		spolyeta_unpack(&( s2->vec[i] ),
+		                prv +i *DIL_R3_POLYETA6x5_PACKEDBYTES, 4);
+	}
+	prv += 6 * DIL_R3_POLYETA6x5_PACKEDBYTES;  /*K*/
+	
+	for (i = 0; i < 6; ++i) {
+		spolyt0_unpack(&( t0->vec[i] ), prv +i *DIL_R3_POLYT0_PACKEDBYTES);
+	}
+}
+
+static void 
+ml_sunpack_prv6(unsigned char rho[ DIL_SEEDBYTES ],
+             unsigned char key[ DIL_SEEDBYTES ],
+             unsigned char tr [ DIL_MLDSA_TRBYTES ],
+                 spolyvec5 *s1,
+                 spolyvec6 *s2,
+                 spolyvec6 *t0,
+       const unsigned char prv[ DIL_MLDSA_PRV6x5_BYTES ])
+{
+	unsigned int i;
+
+	memmove(rho, prv, DIL_SEEDBYTES);
+	prv += DIL_SEEDBYTES;
+
+	memmove(key, prv, DIL_SEEDBYTES);
+	prv += DIL_SEEDBYTES;
+
+	memmove(tr, prv,  DIL_MLDSA_TRBYTES);
+	prv += DIL_MLDSA_TRBYTES;
 
 	for (i = 0; i < 5; ++i) {
 		spolyeta_unpack(&( s1->vec[i] ),
@@ -2036,6 +2185,43 @@ spack_prv8(unsigned char prv[ DIL_R3_PRV8x7_BYTES ],
 	}
 }
 
+static void 
+ml_spack_prv8(unsigned char prv[ DIL_MLDSA_PRV8x7_BYTES ],
+     const unsigned char rho[ DIL_SEEDBYTES ],
+     const unsigned char key[ DIL_SEEDBYTES ],
+     const unsigned char tr [ DIL_MLDSA_TRBYTES ],
+         const spolyvec7 *s1,
+         const spolyvec8 *s2,
+         const spolyvec8 *t0)
+{
+	unsigned int i;
+
+	memmove(prv, rho, DIL_SEEDBYTES);
+	prv += DIL_SEEDBYTES;
+
+	memmove(prv, key, DIL_SEEDBYTES);
+	prv += DIL_SEEDBYTES;
+
+	memmove(prv, tr,  DIL_MLDSA_TRBYTES);
+	prv += DIL_MLDSA_TRBYTES;
+
+	for (i = 0; i < 7; ++i) {
+		spolyeta_pack(prv +i *DIL_R3_POLYETA8x7_PACKEDBYTES,
+		              &(s1->vec[i]), 2 /* eta(K=8) */);
+	}
+	prv += 7 * DIL_R3_POLYETA8x7_PACKEDBYTES;  /*L*/
+
+	for (i = 0; i < 8; ++i) {
+		spolyeta_pack(prv +i *DIL_R3_POLYETA8x7_PACKEDBYTES,
+		              &(s2->vec[i]), 2 /* eta(k=8) */);
+	}
+	prv += 8 * DIL_R3_POLYETA8x7_PACKEDBYTES;  /*K*/
+
+	for (i = 0; i < 8; ++i) {
+		spolyt0_pack(prv +i *DIL_R3_POLYT0_PACKEDBYTES, &(t0->vec[i]));
+	}
+}
+
 
 /*------------------------------------*/
 static void 
@@ -2057,6 +2243,43 @@ sunpack_prv8(unsigned char rho[ DIL_SEEDBYTES ],
 
 	memmove(tr, prv,  DIL_SEEDBYTES);
 	prv += DIL_SEEDBYTES;
+
+	for (i = 0; i < 7; ++i) {
+		spolyeta_unpack(&( s1->vec[i] ),
+		                prv +i *DIL_R3_POLYETA8x7_PACKEDBYTES, 2);
+	}
+	prv += 7 * DIL_R3_POLYETA8x7_PACKEDBYTES;  /*L*/
+	
+	for (i = 0; i < 8; ++i) {
+		spolyeta_unpack(&( s2->vec[i] ),
+		                prv +i *DIL_R3_POLYETA8x7_PACKEDBYTES, 2);
+	}
+	prv += 8 * DIL_R3_POLYETA8x7_PACKEDBYTES;  /*K*/
+	
+	for (i = 0; i < 8; ++i) {
+		spolyt0_unpack(&( t0->vec[i] ), prv +i *DIL_R3_POLYT0_PACKEDBYTES);
+	}
+}
+
+static void 
+ml_sunpack_prv8(unsigned char rho[ DIL_SEEDBYTES ],
+             unsigned char key[ DIL_SEEDBYTES ],
+             unsigned char tr [ DIL_MLDSA_TRBYTES ],
+                 spolyvec7 *s1,
+                 spolyvec8 *s2,
+                 spolyvec8 *t0,
+       const unsigned char prv[ DIL_MLDSA_PRV8x7_BYTES ])
+{
+	unsigned int i;
+
+	memmove(rho, prv, DIL_SEEDBYTES);
+	prv += DIL_SEEDBYTES;
+
+	memmove(key, prv, DIL_SEEDBYTES);
+	prv += DIL_SEEDBYTES;
+
+	memmove(tr, prv,  DIL_MLDSA_TRBYTES);
+	prv += DIL_MLDSA_TRBYTES;
 
 	for (i = 0; i < 7; ++i) {
 		spolyeta_unpack(&( s1->vec[i] ),
@@ -2661,6 +2884,33 @@ r3_kpack_pk3(unsigned char wire[ 1184 /* 3 *384 +32 */ ],
 	memmove(wire +1152, seed, KYB_SYMBYTES);
 }
 
+static int
+mlkem_pack_check_pk3(const kpolyvec3 *pk,
+    const uint8_t wire[KYB_PUB3_BYTES])
+{
+	uint8_t diff = 0;
+	unsigned int k, i;
+	uint16_t     t0, t1;
+	const kpoly* a;
+	const uint8_t *r = wire;
+
+	for (k = 0; k < 3; ++k) {
+		a = &(pk->vec[k]);
+		for ( i = 0; i < KYB_N / 2; i++ ) {
+        	// map to positive standard representatives
+        	t0 = a->coeffs[2 * i];
+        	t0 += ((int16_t)t0 >> 15) & KYB_Q;
+        	t1 = a->coeffs[2 * i + 1];
+        	t1 += ((int16_t)t1 >> 15) & KYB_Q;
+
+        	diff |= *r++ ^ (uint8_t) (t0 >> 0);
+        	diff |= *r++ ^ (uint8_t) ((t0 >> 8) | (t1 << 4));
+        	diff |= *r++ ^ (uint8_t) (t1 >> 4);
+    	}
+	}
+
+    return (-(uint64_t)diff) >> 63;
+}
 
 /*------------------------------------*/
 static void 
@@ -2953,6 +3203,34 @@ r3_kpack_pk4(unsigned char wire[ 1568 /* 4 *384 +32 */ ],
 	r3_kpolyvec4_tobytes(wire, pk);
 
 	memmove(wire +1536, seed, KYB_SYMBYTES);
+}
+
+static int
+mlkem_pack_check_pk4(const kpolyvec4 *pk,
+    const uint8_t wire[KYB_PUB4_BYTES])
+{
+	uint8_t diff = 0;
+	unsigned int k, i;
+	uint16_t     t0, t1;
+	const kpoly* a;
+	const uint8_t *r = wire;
+
+	for (k = 0; k < 4; ++k) {
+		a = &(pk->vec[k]);
+		for ( i = 0; i < KYB_N / 2; i++ ) {
+        	// map to positive standard representatives
+        	t0 = a->coeffs[2 * i];
+        	t0 += ((int16_t)t0 >> 15) & KYB_Q;
+        	t1 = a->coeffs[2 * i + 1];
+        	t1 += ((int16_t)t1 >> 15) & KYB_Q;
+
+        	diff |= *r++ ^ (uint8_t) (t0 >> 0);
+        	diff |= *r++ ^ (uint8_t) ((t0 >> 8) | (t1 << 4));
+        	diff |= *r++ ^ (uint8_t) (t1 >> 4);
+    	}
+	}
+
+	return (-(uint64_t)diff) >> 63;
 }
 
 

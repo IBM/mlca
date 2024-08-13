@@ -76,7 +76,31 @@ static const mlca_kem_api_t r3_kyber_kem_api = {
 	.kem_dec = mlca_kyber_r3_kem_dec
 };
 
-const mlca_alg_t kyber_mlca_ctx[4] = {
+const mlca_alg_t kyber_mlca_ctx[6] = {
+	{
+		.algorithm_name = MLCA_ALGORITHM_KEM_MLKEM_768,
+		.algorithm_oid = MLCA_ALGORITHM_KEM_MLKEM_768_OID,
+		.type = KEM,
+		.alg_version = "ML-KEM (FIPS 203)",
+		.claimed_nist_level = 3,
+		.ind_cca = 1,
+		.encodings = &Kyber768_encoding,
+		.alg_ctx_len = KYBER768_LEN,
+		.alg_ctx_all = Kyber768,
+		.api = &kyberibm_kem_api,
+	},
+	{
+		.algorithm_name = MLCA_ALGORITHM_KEM_MLKEM_1024,
+		.algorithm_oid = MLCA_ALGORITHM_KEM_MLKEM_1024_OID,
+		.type = KEM,
+		.alg_version = "ML-KEM (FIPS 203)",
+		.claimed_nist_level = 5,
+		.ind_cca = 1,
+		.encodings = &Kyber1024_encoding,
+		.alg_ctx_len = KYBER1024_LEN,
+		.alg_ctx_all = Kyber1024,
+		.api = &kyberibm_kem_api,
+	},
 	{
 		.algorithm_name = MLCA_ALGORITHM_KEM_KYBER_768,
 		.algorithm_oid = MLCA_ALGORITHM_KEM_KYBER_768_R2_OID,

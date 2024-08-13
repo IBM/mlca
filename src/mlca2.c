@@ -243,8 +243,16 @@ MLCA_RC mlca_sig_sign(const mlca_ctx_t *ctx, unsigned char *sig, size_t *siglen,
 	return ctx->alg[0]->api.sig_api->sig_sign(ctx, sig, siglen, m, mlen, sk);
 }
 
+MLCA_RC mlca_sig_sign_internal(const mlca_ctx_t *ctx, unsigned char *sig, size_t *siglen, const unsigned char *m, size_t mlen, const unsigned char *sk) {
+	return ctx->alg[0]->api.sig_api->sig_sign_internal(ctx, sig, siglen, m, mlen, sk);
+}
+
 MLCA_RC mlca_sig_verify(const mlca_ctx_t *ctx, const unsigned char *m, size_t mlen, const unsigned char *sig, size_t siglen, const unsigned char *pk) {
 	return ctx->alg[0]->api.sig_api->sig_verify(ctx, m, mlen, sig, siglen, pk);
+}
+
+MLCA_RC mlca_sig_verify_internal(const mlca_ctx_t *ctx, const unsigned char *m, size_t mlen, const unsigned char *sig, size_t siglen, const unsigned char *pk) {
+	return ctx->alg[0]->api.sig_api->sig_verify_internal(ctx, m, mlen, sig, siglen, pk);
 }
 
 MLCA_RC mlca_kem_keypair_encode(const mlca_ctx_t *ctx, unsigned char *pk, unsigned char **pkenc, unsigned char *sk, unsigned char **skenc) {

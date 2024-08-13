@@ -50,6 +50,18 @@
 #define DILITHIUM_R2_8x7_CRYPTO_SECRETKEYBYTES 5136
 #define DILITHIUM_R2_8x7_CRYPTO_BYTES 4668
 
+#define MLDSA_44_CRYPTO_PUBLICKEYBYTES 1312
+#define MLDSA_44_CRYPTO_SECRETKEYBYTES 2560
+#define MLDSA_44_CRYPTO_BYTES 2420
+
+#define MLDSA_65_CRYPTO_PUBLICKEYBYTES 1952
+#define MLDSA_65_CRYPTO_SECRETKEYBYTES 4032
+#define MLDSA_65_CRYPTO_BYTES 3309
+
+#define MLDSA_87_CRYPTO_PUBLICKEYBYTES 2592
+#define MLDSA_87_CRYPTO_SECRETKEYBYTES 4896
+#define MLDSA_87_CRYPTO_BYTES 4627
+
 
 
 //   DilithiumPublicKey ::= SEQUENCE {
@@ -539,6 +551,63 @@ static const mlca_encoding_impl_t Dilithium_R2_8x7_encodings_arr[] = {
             .encode = mlca_encode_raw,
             .decode = mlca_decode_raw
         }
+};
+
+static const mlca_encoding_impl_t Mldsa_44_encodings_arr[] = {
+        {
+            .encoding_name = "Raw", // RAW-NIST
+            .raw = 1,
+            .algorithm_oid = MLCA_ALGORITHM_SIG_MLDSA_44_OID,
+            .crypto_publickeybytes = MLDSA_44_CRYPTO_PUBLICKEYBYTES,
+            .crypto_secretkeybytes = MLDSA_44_CRYPTO_SECRETKEYBYTES,
+            .crypto_bytes = MLDSA_44_CRYPTO_BYTES,
+            .encode = mlca_encode_raw,
+            .decode = mlca_decode_raw
+        }
+};
+
+static const mlca_encoding_impl_t Mldsa_65_encodings_arr[] = {
+        {
+            .encoding_name = "Raw", // RAW-NIST
+            .raw = 1,
+            .algorithm_oid = MLCA_ALGORITHM_SIG_MLDSA_65_OID,
+            .crypto_publickeybytes = MLDSA_65_CRYPTO_PUBLICKEYBYTES,
+            .crypto_secretkeybytes = MLDSA_65_CRYPTO_SECRETKEYBYTES,
+            .crypto_bytes = MLDSA_65_CRYPTO_BYTES,
+            .encode = mlca_encode_raw,
+            .decode = mlca_decode_raw
+        }
+};
+
+static const mlca_encoding_impl_t Mldsa_87_encodings_arr[] = {
+        {
+            .encoding_name = "Raw", // RAW-NIST
+            .raw = 1,
+            .algorithm_oid = MLCA_ALGORITHM_SIG_MLDSA_87_OID,
+            .crypto_publickeybytes = MLDSA_87_CRYPTO_PUBLICKEYBYTES,
+            .crypto_secretkeybytes = MLDSA_87_CRYPTO_SECRETKEYBYTES,
+            .crypto_bytes = MLDSA_87_CRYPTO_BYTES,
+            .encode = mlca_encode_raw,
+            .decode = mlca_decode_raw
+        }
+};
+
+const mlca_encoding_t Mldsa_44_encodings = {
+    .algorithm_oid = MLCA_ALGORITHM_SIG_MLDSA_44_OID,
+    .encodings_len = 1,
+    .encoding = Mldsa_44_encodings_arr
+};
+
+const mlca_encoding_t Mldsa_65_encodings = {
+    .algorithm_oid = MLCA_ALGORITHM_SIG_MLDSA_65_OID,
+    .encodings_len = 1,
+    .encoding = Mldsa_65_encodings_arr
+};
+
+const mlca_encoding_t Mldsa_87_encodings = {
+    .algorithm_oid = MLCA_ALGORITHM_SIG_MLDSA_87_OID,
+    .encodings_len = 1,
+    .encoding = Mldsa_87_encodings_arr
 };
 
 const mlca_encoding_t Dilithium_R3_4x4_encodings = {

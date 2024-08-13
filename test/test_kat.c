@@ -115,6 +115,8 @@ test_nist_kat(const mlca_ctx_t * params)
         }
         if(memcmp(sk, sk_rsp, mlca_kem_crypto_secretkeybytes(params)) != 0){
             printf("ERROR: sk is different from <%s>, idx = %d\n", fn_rsp, idx);
+            print_uchar(sk, mlca_kem_crypto_secretkeybytes(params), "sk");
+            print_uchar(sk_rsp, mlca_kem_crypto_secretkeybytes(params), "sk_rsp");
             return KAT_VERIFICATION_ERROR;
         }
 
@@ -388,6 +390,8 @@ test_nist_kat_sign(const mlca_ctx_t * params)
 	}
         if(memcmp(sk,sk_rsp,mlca_sig_crypto_secretkeybytes(params))!=0){
 	    printf("ERROR: sk is different from <%s>\n", fn_rsp);
+        print_uchar(sk, mlca_kem_crypto_secretkeybytes(params), "sk");
+        print_uchar(sk_rsp, mlca_kem_crypto_secretkeybytes(params), "sk_rsp");
 	    return KAT_VERIFICATION_ERROR;
 	}
         smlen = mlca_sig_crypto_bytes(params);
