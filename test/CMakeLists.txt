@@ -67,6 +67,10 @@ add_test(Dilithium54_R2-self_encodings_minimal mlca_test Dilithium54_R2 self_enc
 add_test(Dilithium65_R2-self_encodings_minimal mlca_test Dilithium65_R2 self_encodings_minimal)
 add_test(Dilithium87_R2-self_encodings_minimal mlca_test Dilithium87_R2 self_encodings_minimal)
 
+add_test(ML-DSA-44-self_encodings_minimal mlca_test ML-DSA-44 self_encodings_minimal)
+add_test(ML-DSA-65-self_encodings_minimal mlca_test ML-DSA-65 self_encodings_minimal)
+add_test(ML-DSA-87-self_encodings_minimal mlca_test ML-DSA-87 self_encodings_minimal)
+
 add_test(Dilithium2-kat_nist mlca_test Dilithium2 kat_nist)
 add_test(Dilithium3-kat_nist mlca_test Dilithium3 kat_nist)
 add_test(Dilithium5-kat_nist mlca_test Dilithium5 kat_nist)

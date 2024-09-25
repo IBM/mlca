@@ -4163,6 +4163,7 @@ static unsigned int crs_oid2type(const unsigned char *oid, size_t obytes)
 static size_t crs_oid2wire(unsigned char *wire, size_t wbytes, unsigned int type)
 {
     uint32_t tail = 0;
+    int      csor_oid = 0;
     size_t   wr;
 
     switch ( type ) {
@@ -4183,6 +4184,14 @@ static size_t crs_oid2wire(unsigned char *wire, size_t wbytes, unsigned int type
         tail = 0x070807;
         break;
 
+        /* ML-DSA FIPS 204 */
+    case MLCA_ID_DIL_MLDSA_44: tail = 0x0311; csor_oid = 1; break;
+    case MLCA_ID_DIL_MLDSA_65: tail = 0x0312; csor_oid = 1; break;
+    case MLCA_ID_DIL_MLDSA_87: 
+        tail = 0x0313;
+        csor_oid = 1;
+        break;
+
         /* Kyber */
     case MLCA_ID_KYB3_R2: tail = 0x050303; break;
     case MLCA_ID_KYB4_R2:
@@ -4193,23 +4202,40 @@ static size_t crs_oid2wire(unsigned char *wire, size_t wbytes, unsigned int type
     case MLCA_ID_KYB3_R3: tail = 0x080303; break;
     case MLCA_ID_KYB4_R3: tail = 0x080404; break;
 
+        /* ML-KEM FIPS 203 */
+    case MLCA_ID_KYB_MLKEM_768: tail = 0x0402; csor_oid = 1; break;
+    case MLCA_ID_KYB_MLKEM_1024: 
+        tail = 0x0403;
+        csor_oid = 1; 
+        break;
+
     default: break;
     }
 
     if ( !tail )
         return 0;
 
-    wr = sizeof(crs_oidstub) + CRS_OIDTAIL_BYTES;
+    if ( csor_oid == 0 )
+        wr = sizeof(crs_oidstub) + CRS_OIDTAIL_BYTES;
+    else
+        wr = sizeof(crs_oidstub_csor) + CRS_OIDTAIL_CSOR_BYTES;
 
     if ( wire && (wr > wbytes) )
         return ~((size_t)0);  // insufficient output
 
     if ( wire ) {
-        MEMCPY(wire, crs_oidstub, sizeof(crs_oidstub));
+        if ( csor_oid == 0 ) {
+            MEMCPY(wire, crs_oidstub, sizeof(crs_oidstub));
 
-        wire[wr - 3] = (unsigned char)(tail >> 16);
-        wire[wr - 2] = (unsigned char)(tail >> 8);
-        wire[wr - 1] = (unsigned char)tail;
+            wire[wr - 3] = (unsigned char)(tail >> 16);
+            wire[wr - 2] = (unsigned char)(tail >> 8);
+            wire[wr - 1] = (unsigned char)tail;
+        } else {
+            MEMCPY(wire, crs_oidstub_csor, sizeof(crs_oidstub_csor));
+
+            wire[wr - 2] = (unsigned char)(tail >> 8);
+            wire[wr - 1] = (unsigned char)tail;
+        }
     }
 
     return wr;
@@ -4644,6 +4670,11 @@ static const struct {
     { MLCA_ID_DIL2_R3, 32, 32, 32, 384, 384, 1664, DIL_R3_PRV4x4_BYTES, 1280, 3876 },
     { MLCA_ID_DIL3_R3, 32, 32, 32, 640, 768, 2496, DIL_R3_PRV6x5_BYTES, 1920, 5988 },
     { MLCA_ID_DIL5_R3, 32, 32, 32, 672, 768, 3328, DIL_R3_PRV8x7_BYTES, 2560, 7492 },
+
+    /*                               s1   s2   t0          t1    */
+    { MLCA_ID_DIL_MLDSA_44, 32, 32, 64, 384, 384, 1664, DIL_MLDSA_PRV4x4_BYTES, 1280, 3906 },
+    { MLCA_ID_DIL_MLDSA_65, 32, 32, 64, 640, 768, 2496, DIL_MLDSA_PRV6x5_BYTES, 1920, 6018 },
+    { MLCA_ID_DIL_MLDSA_87, 32, 32, 64, 672, 768, 3328, DIL_MLDSA_PRV8x7_BYTES, 2560, 7522 },
 /* clang-format on */
 
     /* sizes w/o typos: scaling is nonlinear */
@@ -4653,6 +4684,7 @@ static const struct {
 
 /*------------------------------------*/
 static unsigned int dil_type2round(unsigned int type);
+static unsigned int kyb_type2round(unsigned int type);
 
 /*--------------------------------------
  * returns >0  if written to start of (wire, wbytes)
@@ -4672,6 +4704,9 @@ static size_t dil_prv2wire(unsigned char *wire, size_t wbytes, const unsigned ch
     case DIL_R3_PRV4x4_BYTES: type = MLCA_ID_DIL2_R3; break;
     case DIL_R3_PRV6x5_BYTES: type = MLCA_ID_DIL3_R3; break;
     case DIL_R3_PRV8x7_BYTES: type = MLCA_ID_DIL5_R3; break;
+    case DIL_MLDSA_PRV4x4_BYTES: type = MLCA_ID_DIL_MLDSA_44; break;
+    case DIL_MLDSA_PRV6x5_BYTES: type = MLCA_ID_DIL_MLDSA_65; break;
+    case DIL_MLDSA_PRV8x7_BYTES: type = MLCA_ID_DIL_MLDSA_87; break;
 
     case DIL_PRV5x4_BYTES + CRS_WTYPE_BYTES:
         type  = MLCA_ID_DIL3_R2;
@@ -4805,13 +4840,11 @@ static size_t dil_pub2wire(unsigned char *wire, size_t wbytes, const unsigned ch
     unsigned int type = 0, round = 0;
     size_t       wr = 0, offs = 0, oidb;
 
+    /* Only support r2 by size, DIL R3 and ML-DSA sizes are the same */
     switch ( pub ? pbytes : 0 ) {
     case DIL_PUB5x4_BYTES: type = MLCA_ID_DIL3_R2; break;
     case DIL_PUB6x5_BYTES: type = MLCA_ID_DIL4_R2; break;
     case DIL_PUB8x7_BYTES: type = MLCA_ID_DIL5_R2; break;
-    case DIL_R3_PUB4x4_BYTES: type = MLCA_ID_DIL2_R3; break;
-    case DIL_R3_PUB6x5_BYTES: type = MLCA_ID_DIL3_R3; break;
-    case DIL_R3_PUB8x7_BYTES: type = MLCA_ID_DIL5_R3; break;
 
     case DIL_PUB5x4_BYTES + CRS_WTYPE_BYTES:
         type  = MLCA_ID_DIL3_R2;
@@ -4823,26 +4856,66 @@ static size_t dil_pub2wire(unsigned char *wire, size_t wbytes, const unsigned ch
         type  = MLCA_ID_DIL5_R2;
         break;
 
-    case DIL_R3_PUB4x4_BYTES + CRS_WTYPE_BYTES:
-        type  = MLCA_ID_DIL2_R3;
-        break;
-    case DIL_R3_PUB6x5_BYTES + CRS_WTYPE_BYTES:
-        type  = MLCA_ID_DIL3_R3;
-        break;
-    case DIL_R3_PUB8x7_BYTES + CRS_WTYPE_BYTES:
-        type  = MLCA_ID_DIL5_R3;
-        break;
-
     default: break;
     }
+
+    if ( type == 0 ) {
+        type = crs_oid2type(algid, ibytes);
+        if ( type == 0 )
+            return 0;
+    }
+
     round = dil_type2round(type);
     if ( !type || !round )
         return 0;
 
-    (void)algid;
-    (void)ibytes;
+    switch (type)
+    {
+    case MLCA_ID_DIL3_R2:
+        if (pbytes != DIL_PUB5x4_BYTES && pbytes != DIL_PUB5x4_BYTES + CRS_WTYPE_BYTES)
+            return 0;
+        break;
+    case MLCA_ID_DIL4_R2:
+        if (pbytes != DIL_PUB6x5_BYTES && pbytes != DIL_PUB6x5_BYTES + CRS_WTYPE_BYTES)
+            return 0;
+        break;
+    case MLCA_ID_DIL5_R2:
+        if (pbytes != DIL_PUB8x7_BYTES && pbytes != DIL_PUB8x7_BYTES + CRS_WTYPE_BYTES)
+            return 0;
+        break;
+    case MLCA_ID_DIL2_R3:
+        if (pbytes != DIL_R3_PUB4x4_BYTES && pbytes != DIL_R3_PUB4x4_BYTES + CRS_WTYPE_BYTES)
+            return 0;
+        break;
+    case MLCA_ID_DIL3_R3:
+        if (pbytes != DIL_R3_PUB6x5_BYTES && pbytes != DIL_R3_PUB6x5_BYTES + CRS_WTYPE_BYTES)
+            return 0;
+        break;
+    case MLCA_ID_DIL5_R3:
+        if (pbytes != DIL_R3_PUB8x7_BYTES && pbytes != DIL_R3_PUB8x7_BYTES + CRS_WTYPE_BYTES)
+            return 0;
+        break;
+    case MLCA_ID_DIL_MLDSA_44:
+        if (pbytes != DIL_MLDSA_44_PUB_BYTES && pbytes != DIL_MLDSA_44_PUB_BYTES + CRS_WTYPE_BYTES)
+            return 0;
+        break;
+    case MLCA_ID_DIL_MLDSA_65:
+        if (pbytes != DIL_MLDSA_65_PUB_BYTES && pbytes != DIL_MLDSA_65_PUB_BYTES + CRS_WTYPE_BYTES)
+            return 0;
+        break;
+    case MLCA_ID_DIL_MLDSA_87:
+        if (pbytes != DIL_MLDSA_87_PUB_BYTES && pbytes != DIL_MLDSA_87_PUB_BYTES + CRS_WTYPE_BYTES)
+            return 0;
+        break;
+    default:
+        break;
+    }
 
-    wr = DIL_SPKI_ADDL_BYTES + sizeof(crs_oidstub) + CRS_OIDTAIL_BYTES + pbytes;
+    if (round == 4)
+        wr = DIL_SPKI_ADDL_BYTES + sizeof(crs_oidstub_csor) + CRS_OIDTAIL_CSOR_BYTES + pbytes;
+    else
+        wr = DIL_SPKI_ADDL_BYTES + sizeof(crs_oidstub) + CRS_OIDTAIL_BYTES + pbytes;
+
 
     if ( !wire )
         return wr;
@@ -5083,6 +5156,18 @@ static const unsigned char r3_kyb__4pkcs8_pfx[] = {
     0x30, 0x82, 0x12, 0xd1, 0x02, 0x01, 0x00, 0x03, 0x82, 0x0c, 0x61, 0x00,
 };
 
+static const unsigned char mlkem_kyb__3pkcs8_pfx[] = {
+    0x30, 0x82, 0x0e, 0x6b, 0x02, 0x01, 0x00, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 
+    0x01, 0x65, 0x03, 0x04, 0x04, 0x02, 0x05, 0x00, 0x04, 0x82, 0x0e, 0x55, 0x30, 0x82,
+    0x0e, 0x51, 0x02, 0x01, 0x00, 0x03, 0x82, 0x09, 0x61, 0x00,
+};
+
+static const unsigned char mlkem_kyb__4pkcs8_pfx[] = {
+    0x30, 0x82, 0x12, 0xed, 0x02, 0x01, 0x00, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 
+    0x01, 0x65, 0x03, 0x04, 0x04, 0x03, 0x05, 0x00, 0x04, 0x82, 0x12, 0xd5, 0x30, 0x82, 
+    0x12, 0xd1, 0x02, 0x01, 0x00, 0x03, 0x82, 0x0c, 0x61, 0x00,
+};
+
 /*--------------------------------------
  * retrieve internal prv.key from PKCS8-encoded wire bytes
  *
@@ -5147,10 +5232,32 @@ static size_t kyb_wire2prv(unsigned char *prv, size_t pbytes, unsigned int *type
                 pubb  = KYB_PUB4_BYTES;
             }
 
+        } else if ( wbytes == (size_t)4847) { /* ml-kem, 4-4 */
+            if ( MEMCMP(wire, mlkem_kyb__4pkcs8_pfx, sizeof(mlkem_kyb__4pkcs8_pfx)) )
+                round = 4;
+            else
+                break;
+
+            /* [0] { BIT STRING { ... } } */
+            if ( MEMCMP(wire + 3206, "\xa0\x82\x06\x65\x03\x82\x06\x61", 8) )
+                break;
+
+            wr = KYB_PRV4_BYTES;
+            if ( prv && (pbytes < wr) ) {
+                wr = CRS__SZ_ETOOSMALL;
+            } else {
+                if ( prv ) {
+                    MEMMOVE(prv, wire + sizeof(mlkem_kyb__4pkcs8_pfx), wr);
+                }
+
+                wtype = MLCA_ID_KYB_MLKEM_1024;
+                pubb  = KYB_PUB4_BYTES;
+            }
+
         } else if ( wbytes == (size_t)3697 ) { /* r2, 3-3 */
-            if ( MEMCMP(wire, kyb__3pkcs8_pfx, sizeof(kyb__3pkcs8_pfx)) )
+            if ( !MEMCMP(wire, kyb__3pkcs8_pfx, sizeof(kyb__3pkcs8_pfx)) )
                 round = 2;
-            else if ( MEMCMP(wire, r3_kyb__3pkcs8_pfx, sizeof(r3_kyb__3pkcs8_pfx)) )
+            else if ( !MEMCMP(wire, r3_kyb__3pkcs8_pfx, sizeof(r3_kyb__3pkcs8_pfx)) )
                 round = 3;
             else
                 break;
@@ -5171,6 +5278,28 @@ static size_t kyb_wire2prv(unsigned char *prv, size_t pbytes, unsigned int *type
                 }
 
                 wtype = MLCA_ID_KYB3_R2;
+                pubb  = KYB_PUB3_BYTES;
+            }
+
+        } else if ( wbytes == (size_t)3695 ) { /* mlkem, 3-3 */
+            if ( !MEMCMP(wire, mlkem_kyb__3pkcs8_pfx, sizeof(mlkem_kyb__3pkcs8_pfx)) )
+                round = 4;
+            else
+                break;
+
+            /* [0] { BIT STRING { ... } } */
+            if ( MEMCMP(wire + 2438, "\xa0\x82\x04\xe5\x03\x82\x04\xe1", 8) )
+                break;
+
+            wr = KYB_PRV3_BYTES;
+            if ( prv && (pbytes < wr) ) {
+                wr = CRS__SZ_ETOOSMALL;
+            } else {
+                if ( prv ) {
+                    MEMMOVE(prv, wire + sizeof(mlkem_kyb__3pkcs8_pfx), wr);
+                }
+
+                wtype = MLCA_ID_KYB_MLKEM_768;
                 pubb  = KYB_PUB3_BYTES;
             }
 
@@ -5219,6 +5348,26 @@ static const unsigned char kyb__4spki_pfx[] = {
 /* + KYB_PUB4_BYTES */
 
 /*--------------------------------------
+ * assuming DER encoding
+ */
+static const unsigned char mlkem_kyb__3spki_pfx[] = {
+    0x30, 0x82, 0x04, 0xbd, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 
+    0x01, 0x65, 0x03, 0x04, 0x04, 0x02, 0x05, 0x00, 0x03, 0x82, 0x04,
+    0xaa, 0x00, 0x30, 0x82, 0x04, 0xa5, 0x03, 0x82, 0x04, 0xa1, 0x00,
+};
+/* + KYB_PUB3_BYTES */
+
+/*--------------------------------------
+ * assuming DER encoding
+ */
+static const unsigned char mlkem_kyb__4spki_pfx[] = {
+    0x30, 0x82, 0x06, 0x3d, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 
+    0x01, 0x65, 0x03, 0x04, 0x04, 0x03, 0x05, 0x00, 0x03, 0x82, 0x06,
+    0x2a, 0x00, 0x30, 0x82, 0x06, 0x25, 0x03, 0x82, 0x06, 0x21, 0x00,
+};
+/* + KYB_PUB4_BYTES */
+
+/*--------------------------------------
  * skeleton, identifying OID through minimal template
  * returns >0  if successful: nr. of bytes written to start of (pub, pbytes)
  *          0  if framing is not recognized
@@ -5255,6 +5404,20 @@ static size_t kyb_wire2pub(unsigned char *pub, size_t pbytes, unsigned int *type
         rdtype = MLCA_ID_KYB4_R2;
         wr     = KYB_PUB4_BYTES;
 
+    } else if ( sizeof(mlkem_kyb__3spki_pfx) + KYB_PUB3_BYTES == wbytes ) {
+        if ( MEMCMP(mlkem_kyb__3spki_pfx, wire, sizeof(mlkem_kyb__3spki_pfx)) )
+            return 0;
+
+        rdtype = MLCA_ID_KYB_MLKEM_768;
+        wr     = KYB_PUB3_BYTES;
+
+    } else if ( sizeof(mlkem_kyb__4spki_pfx) + KYB_PUB4_BYTES == wbytes ) {
+        if ( MEMCMP(mlkem_kyb__4spki_pfx, wire, sizeof(mlkem_kyb__4spki_pfx)) )
+            return 0;
+
+        rdtype = MLCA_ID_KYB_MLKEM_1024;
+        wr     = KYB_PUB4_BYTES;
+
     } else {
         return 0;
     }
@@ -5281,16 +5444,23 @@ static size_t kyb_pub2wire(unsigned char *wire, size_t wbytes, const unsigned ch
                            size_t pbytes, const unsigned char *algid, size_t ibytes)
 {
     size_t       wr = 0, offs = 0;
-    unsigned int type  = 0;
+    unsigned int type  = 0, round = 0;
 
     type = crs_oid2type(algid, ibytes);
     if ( type == 0 )
         return 0;
 
+    round = kyb_type2round(type);
+    if ( round == 0 )
+        return 0;
+
     if ( !type )
         return 0;
 
-    wr = KYB_SPKI_ADDL_BYTES + sizeof(crs_oidstub) + CRS_OIDTAIL_BYTES + pbytes;
+    if ( round == 4 )
+        wr = KYB_SPKI_ADDL_BYTES + sizeof(crs_oidstub_csor) + CRS_OIDTAIL_CSOR_BYTES + pbytes;
+    else
+        wr = KYB_SPKI_ADDL_BYTES + sizeof(crs_oidstub) + CRS_OIDTAIL_BYTES + pbytes;
 
     if ( !wire )
         return wr;
@@ -5417,6 +5587,24 @@ static const struct {
     { 2630, "Dil, round3 std. SPKI, Cat. V [Dil-8-7]",
       MLCA_ID_DIL5_R3,
       6, 13, /*OID*/ 33, 32, /*DIL_SEEDBYTES*/ 70, 2560,
+      DIL_SPKI_SEEDFRAME | DIL_SPKI_T1FRAME,
+    },
+
+    { 1348, "ML-DSA std. SPKI, Cat. II [ML-DSA-44]",
+      MLCA_ID_DIL_MLDSA_44,
+      6, 11, /*OID*/ 31, 32, /*DIL_SEEDBYTES*/ 68, 1280,
+      DIL_SPKI_SEEDFRAME | DIL_SPKI_T1FRAME,
+    },
+
+    { 1988, "ML-DSA std. SPKI, Cat. III [ML-DSA-65]",
+      MLCA_ID_DIL_MLDSA_65,
+      6, 11, /*OID*/ 31, 32, /*DIL_SEEDBYTES*/ 68, 1920,
+      DIL_SPKI_SEEDFRAME | DIL_SPKI_T1FRAME,
+    },
+
+    { 2628, "ML-DSA std. SPKI, Cat. V [ML-DSA-87]",
+      MLCA_ID_DIL_MLDSA_87,
+      6, 11, /*OID*/ 31, 32, /*DIL_SEEDBYTES*/ 68, 2560,
       DIL_SPKI_SEEDFRAME | DIL_SPKI_T1FRAME,
     },
 /* clang-format on */
@@ -5643,6 +5831,27 @@ static const unsigned char dil__pkcs8_44r3_pfx[] = {
     0x01, 0x04, 0x01, 0x02, 0x82, 0x0b, 0x07, 0x04, 0x04, 0x05, 0x00, 0x04, 0x82,
     0x0f, 0x08, 0x30, 0x82, 0x0f, 0x04, 0x02, 0x01, 0x00, 0x03, 0x21, 0x00,
 };
+
+static const unsigned char dil__pkcs8_44mldsa_pfx[] = {
+    /* mldsa44 */
+    0x30, 0x82, 0x0f, 0x3e, 0x02, 0x01, 0x00, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 
+    0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x11, 0x05, 0x00, 0x04, 0x82, 0x0f, 0x28, 
+    0x30, 0x82, 0x0f, 0x24, 0x02, 0x01, 0x00, 0x03, 0x21, 0x00,
+};
+
+static const unsigned char dil__pkcs8_65mldsa_pfx[] = {
+    /* mldsa65 */
+    0x30, 0x82, 0x17, 0x7e, 0x02, 0x01, 0x00, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 
+    0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x12, 0x05, 0x00, 0x04, 0x82, 0x17, 0x68, 
+    0x30, 0x82, 0x17, 0x64, 0x02, 0x01, 0x00, 0x03, 0x21, 0x00,
+};
+
+static const unsigned char dil__pkcs8_87mldsa_pfx[] = {
+    /* mldsa87 */
+    0x30, 0x82, 0x1d, 0x5e, 0x02, 0x01, 0x00, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 
+    0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x13, 0x05, 0x00, 0x04, 0x82, 0x1d, 0x48, 
+    0x30, 0x82, 0x1d, 0x44, 0x02, 0x01, 0x00, 0x03, 0x21, 0x00,
+};
 /**/
 #if 0
 /* round3.0: */
@@ -5770,12 +5979,11 @@ static size_t dil_wire2prv(unsigned char *prv, size_t pbytes, unsigned int *type
             s.t0b = 1222;
 
         } else if ( wbytes == dil__sections[5 - 1].pkcs8b ) { /* r3, 6-5, full */
-            s.s1b = 140;
-
             if ( MEMCMP(wire, dil__pkcs8_65r3_pfx, sizeof(dil__pkcs8_65r3_pfx)) )
                 break;
             round = 3;
             t     = 5;
+            s.s1b = 140;
             s.s2b = 785;
             s.t0b = 1558;
             s.t1b = 4063;
@@ -5804,6 +6012,46 @@ static size_t dil_wire2prv(unsigned char *prv, size_t pbytes, unsigned int *type
             s.s2b = 529;
             s.t0b = 918;
             s.t1b = 2591;
+
+        } else if ( wbytes == dil__sections[7 - 1].pkcs8b ) { /* ML-DSA, 4-4, full */
+            if ( MEMCMP(wire, dil__pkcs8_44mldsa_pfx, sizeof(dil__pkcs8_44mldsa_pfx)) )
+                break;
+            s.nonce = 35-2;
+            s.key   = 70-2;
+            s.prf   = 105-2;
+
+            round = 4;
+            t     = 7;
+            s.s1b = 140-2+32;
+            s.s2b = 529-2+32;
+            s.t0b = 918-2+32;
+            s.t1b = 2591-2+32;
+        } else if ( wbytes == dil__sections[8 - 1].pkcs8b ) { /* ML-DSA, 6-5, full */
+            if ( MEMCMP(wire, dil__pkcs8_65mldsa_pfx, sizeof(dil__pkcs8_65mldsa_pfx)) )
+                break;
+            s.nonce = 35-2;
+            s.key   = 70-2;
+            s.prf   = 105-2;
+
+            round = 4;
+            t     = 8;
+            s.s1b = 140-2+32;
+            s.s2b = 785-2+32;
+            s.t0b = 1558-2+32;
+            s.t1b = 4063-2+32;
+        } else if ( wbytes == dil__sections[9 - 1].pkcs8b ) { /* ML-DSA, 8-7, full */
+            if ( MEMCMP(wire, dil__pkcs8_87mldsa_pfx, sizeof(dil__pkcs8_87mldsa_pfx)) )
+                break;
+            s.nonce = 35-2;
+            s.key   = 70-2;
+            s.prf   = 105-2;
+
+            round = 4;
+            t     = 9;
+            s.s1b = 140-2+32;
+            s.s2b = 817-2+32;
+            s.t0b = 1590-2+32;
+            s.t1b = 4927-2+32;
         }
 
         /* no match, falling through with default wr 'no match' */
@@ -8657,7 +8905,7 @@ static int mlkem_indcpa_enc(uint8_t *c, size_t cbytes, const uint8_t m[KYB_INDCP
          *  FIPS203 Input validation
          *  "ML-KEM.Encaps requires that the byte array containing the
          *  encapsulation key correctly decodes to an array of integers
-         *  modulo 𝑞 without any modular reductions."
+         *  modulo q without any modular reductions."
          */
         switch ( kyb_k ) {
         case 3:
