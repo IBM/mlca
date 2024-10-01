@@ -122,7 +122,7 @@ int test_sig_encodings_minimal(mlca_ctx_t * ctx) {
         if (!skEnc) goto looperr;
 
         pkEncLenEffective = mlca_key2wire(
-            pkEnc, pkEncLen, pk, pkLen, 0, NULL, 0, NULL, 0);
+            pkEnc, pkEncLen, pk, pkLen, 0, NULL, 0, (const unsigned char *)ctx->alg[0]->algorithm_oid, strlen(ctx->alg[0]->algorithm_oid));
         if (pkEncLenEffective <= 0) {
             rc = -1;
             goto looperr;
@@ -131,7 +131,7 @@ int test_sig_encodings_minimal(mlca_ctx_t * ctx) {
         }
 
         skEncLenEffective = mlca_key2wire(
-            skEnc, skEncLen, sk, skLen, 0, pk, pkLen, NULL, 0);
+            skEnc, skEncLen, sk, skLen, 0, pk, pkLen, (const unsigned char *)ctx->alg[0]->algorithm_oid, strlen(ctx->alg[0]->algorithm_oid));
         if (skEncLenEffective <= 0) {
             rc = -1;
             goto looperr;
