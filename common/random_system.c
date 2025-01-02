@@ -100,6 +100,10 @@ THE SOFTWARE.
 # include <stdbool.h>
 #endif /* defined(__EMSCRIPTEN__) */
 
+#if defined(_AIX)
+#include <openssl/rand.h>
+#endif
+
 
 #if defined(_WIN32)
 static int randombytes_win32_randombytes(void* buf, size_t n)
@@ -375,6 +379,12 @@ static int randombytes_select(void *buf, size_t n)
 #elif defined(__wasi__)
 	/* Use WASI */
 	return randombytes_wasi_randombytes(buf, n);
+#elif defined(_AIX)
+	/* Use RAND_bytes for cryptographically secure random bytes on AIX */
+	if (RAND_bytes(buf, n) != 1) {
+		return -1;  /* Error generating random bytes */
+	}
+	return 0;  /* Success */
 #else
 # error "randombytes(...) is not supported on this platform"
 #endif
