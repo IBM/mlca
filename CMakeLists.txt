@@ -198,13 +198,18 @@ set(
         common/aes.h common/aes_256_ecb.c
 )
 
-add_library(mlcaencoding STATIC ${LIBRARY_ENCODING_FILES})
-add_library(mlcaencoding_shared SHARED ${LIBRARY_ENCODING_FILES})
+add_library(mlcaencoding ${LIBRARY_ENCODING_FILES})
 
-add_library(mlca STATIC ${LIBRARY_FILES} ${LIBRARY_PLATFORM_FILES} ${RANDOM_FILES} ${RANDOM_FILES_TEST} ${LIBRARY_ENCODING_FILES})
-add_library(mlca_shared SHARED ${LIBRARY_FILES} ${LIBRARY_PLATFORM_FILES} ${RANDOM_FILES} ${RANDOM_FILES_TEST} ${LIBRARY_ENCODING_FILES})
+add_library(mlca ${LIBRARY_FILES} ${LIBRARY_PLATFORM_FILES} ${RANDOM_FILES} ${RANDOM_FILES_TEST} ${LIBRARY_ENCODING_FILES})
 
-install(TARGETS mlca mlca_shared mlcaencoding mlcaencoding_shared DESTINATION lib)
+if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
+	find_package(OpenSSL REQUIRED)
+	target_include_directories(mlcaencoding PRIVATE ${OPENSSL_INCLUDE_DIR})
+	target_link_libraries(mlcaencoding PRIVATE ${OPENSSL_LIBRARIES})
+endif()
+
+#install(TARGETS mlca mlca_shared mlcaencoding mlcaencoding_shared DESTINATION lib)
+install(TARGETS mlca mlcaencoding DESTINATION lib)
 install(FILES include/mlca2.h include/mlca2_random.h DESTINATION include)
 
 enable_testing()

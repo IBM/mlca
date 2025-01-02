@@ -556,7 +556,7 @@ static int decode_PrivateKeyInfo(const mlca_encoding_impl_t* ctx_out, const mlca
     return skpart;
 }
 
-int mlca_encode_draft_uni_qsckeys_01_inner(const mlca_encoding_impl_t* ctx_out, const mlca_encoding_impl_t* ctx_in, unsigned char* pk, unsigned char** pkenc, unsigned char* sk, unsigned char** skenc) {
+MLCA_RC mlca_encode_draft_uni_qsckeys_01_inner(const mlca_encoding_impl_t* ctx_out, const mlca_encoding_impl_t* ctx_in, unsigned char* pk, unsigned char** pkenc, unsigned char* sk, unsigned char** skenc) {
     size_t wrpk = 0, wrsk = 0;
     unsigned char* pkout, *pkin;
     unsigned char* skout, *skin;
