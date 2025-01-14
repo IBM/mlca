@@ -504,7 +504,7 @@ static int32_t s_freeze(int32_t a)
 volatile int16_t int16_t_blocker = 0;
 volatile uint16_t unt16_t_blocker = 0;
 volatile uint8_t uint8_t_blocker = 0;
-
+volatile int32_t int32_t_blocker = 0;
 //---------------------------------------
 static void kyb_cmov_int16(int16_t *r, int16_t v, uint16_t b) {
     v ^= int16_t_blocker;
@@ -1236,7 +1236,7 @@ static int32_t s_decompose(int32_t *a0, int32_t a, unsigned int dil_k)
          */
     } else {
         a1 = (a1 * 11275 + (1 << 23)) >> 24;
-        a1 ^= ((43 - a1) >> 31) & a1;
+        a1 ^= (((43 - a1) >> 31) ^ int32_t_blocker) & a1;
     }
 
     *a0 = a - a1 * 2 * dil_r3k2gamma2(dil_k); /* was: * GAMMA2; */
@@ -2350,14 +2350,14 @@ static void spoly_power2round(spoly *a1, spoly *a0, const spoly *a)
  *              - spoly *a0: pointer to output polynomial with coefficients c0
  *              - const spoly *a: pointer to input polynomial
  **************************************************/
-static void spoly_decompose(spoly *a1, spoly *a0, const spoly *a, unsigned int dil_k)
-{
-    unsigned int i;
+    static void spoly_decompose(spoly *a1, spoly *a0, const spoly *a, unsigned int dil_k)
+    {
+        unsigned int i;
 
-    for ( i = 0; i < DIL_N; ++i ) {
-        a1->coeffs[i] = s_decompose(&a0->coeffs[i], a->coeffs[i], dil_k);
+        for ( i = 0; i < DIL_N; ++i ) {
+            a1->coeffs[i] = s_decompose(&a0->coeffs[i], a->coeffs[i], dil_k);
+        }
     }
-}
 
 /*************************************************
  * Description: Compute hint polynomial. The coefficients of which indicate
