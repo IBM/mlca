@@ -1,5 +1,13 @@
 #!/bin/sh
 export CUR_DIR=`pwd`
+
+if [ ! -d $CUR_DIR/liboqs-0120 ]; then
+    git clone --depth 1 --branch 0.12.0 https://github.com/open-quantum-safe/liboqs.git $CUR_DIR/liboqs-0120
+    cd $CUR_DIR/liboqs-0120 && mkdir -p build && cd build && cmake -DCMAKE_INSTALL_PREFIX=$CUR_DIR/lib0120 -DOQS_BUILD_ONLY_LIB=OFF -DOQS_USE_OPENSSL=OFF -DCMAKE_C_COMPILER=gcc -DOQS_MINIMAL_BUILD="SIG_ml_dsa_44;SIG_ml_dsa_65;SIG_ml_dsa_87;KEM_ml_kem_512;KEM_ml_kem_768;KEM_ml_kem_1024" .. && make -j8 && make install
+elif [ ! -d $CUR_DIR/lib0120/lib ]; then
+    cd $CUR_DIR/liboqs-0120/build && make install
+fi
+
 if [ ! -d $CUR_DIR/liboqs-0100 ]; then
     git clone --depth 1 --branch 0.10.0 https://github.com/open-quantum-safe/liboqs.git $CUR_DIR/liboqs-0100
     cd $CUR_DIR/liboqs-0100 && mkdir -p build && cd build && cmake -DCMAKE_INSTALL_PREFIX=$CUR_DIR/lib0100 -DOQS_BUILD_ONLY_LIB=OFF -DOQS_USE_OPENSSL=OFF -DCMAKE_C_COMPILER=gcc -DOQS_MINIMAL_BUILD="SIG_dilithium_2;SIG_dilithium_3;SIG_dilithium_5;KEM_kyber_512;KEM_kyber_768;KEM_kyber_1024" .. && make -j8 && make install
