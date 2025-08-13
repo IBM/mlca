@@ -362,7 +362,7 @@ void shake128_finalize(Keccak_state *state)
 
 void shake128_squeeze(uint8_t *out, size_t outlen, Keccak_state *state)
 {
-    keccak_sponge_squeeze_update(state, outlen, out, SHAKE256_RATE);
+    keccak_sponge_squeeze_update(state, outlen, out, SHAKE128_RATE);
 }
 
 void shake128_absorb_once(Keccak_state *state, const uint8_t *in, size_t inlen)

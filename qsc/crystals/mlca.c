@@ -397,7 +397,7 @@ static int32_t montgomery_s_reduce(int64_t a)
 {
     int32_t t;
 
-    t = (int64_t)a * DIL_SQINV;
+    t = (int64_t)(int32_t)a * DIL_SQINV;
 
     t = (a - (int64_t)t * DIL_Q) >> 32;
 
@@ -525,31 +525,31 @@ static void kyb_cmov_int16(int16_t *r, int16_t v, uint16_t b) {
  **************************************************/
 static int16_t kyb__montg_reduce(int32_t a)
 {
-    int32_t t;
-    int16_t u;
 
-    u = a * KYB_QINV;
-    t = (int32_t)u * KYB_Q;
-    t = a - t;
-
-    t >>= 16;
-
+    int16_t t;
+    t = (int16_t)a*KYB_QINV;
+    t = (a - (int32_t)t*KYB_Q) >> 16;
     return t;
+
 }
+
+
+
+
 
 static int16_t r3_kyb__montg_reduce(int32_t a)
 {
-    int32_t t;
-    int16_t u;
 
-    u = a * KYB_R3_QINV;
-    t = (int32_t)u * KYB_Q;
-    t = a - t;
-
-    t >>= 16;
-
+    int16_t t;
+    t = (int16_t)a*KYB_R3_QINV;
+    t = (a - (int32_t)t*KYB_Q) >> 16;
     return t;
+
 }
+
+
+
+
 
 /*************************************************
  * Description: Barrett reduction; given a 16-bit integer a, computes
