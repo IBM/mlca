@@ -12,18 +12,13 @@
  *     Dil II    Dil-4/4
  *     Dil III   Dil-6/5
  *     Dil V     Dil-8/7
- *   ML-DSA (FIPS 204)
- *     ML-DSA-44
- *     ML-DSA-65
- *     ML-DSA-87
+ *   ML-DSA (FIPS 204) (45, 65, 87)
  *
  * Kyber variants supported:
  *   round2 and round3
  *   Kyb III   Kyber768
  *   Kyb V     Kyber1024
- *   ML-KEM (FIPS 203)
- *     ML-KEM-768
- *     ML-KEM-1024
+ *   ML-KEM (FIPS 203) (768, 1024)
  *
  * define
  *    USE_STATIC_MLCA  -- make public functions static; suitable for
@@ -34,9 +29,7 @@
  *    NO_CRYSTALS_KEX  -- remove key transport (Kyber)
  *    NO_CRYSTALS_R2   -- exclude round3 versions, if appropriate
  *    NO_CRYSTALS_R3   -- exclude round2 versions, if appropriate
- *
  */
-
 
 #if !defined(MLCA__IMPL_H__)
 #define MLCA__IMPL_H__

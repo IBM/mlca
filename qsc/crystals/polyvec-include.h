@@ -1,7 +1,6 @@
 // ML-DSA implementation below is dual-licensed under Apache-2.0 OR GPL-2.0-only
 // Other parts of this file are licensed under Apache-2.0
 
-/* generated code follows, please do not modify */
 
 #if !defined(NO_CRYSTALS_SIG)    /* Dilithium */
 typedef struct {
