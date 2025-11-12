@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-
+// ML-DSA implementation below is dual-licensed under Apache-2.0 OR GPL-2.0-only
+// Other parts of this file are licensed under Apache-2.0
 
 /*----------------------------------------------------------------------
  *
@@ -12,11 +12,18 @@
  *     Dil II    Dil-4/4
  *     Dil III   Dil-6/5
  *     Dil V     Dil-8/7
+ *   ML-DSA (FIPS 204)
+ *     ML-DSA-44
+ *     ML-DSA-65
+ *     ML-DSA-87
  *
  * Kyber variants supported:
  *   round2 and round3
  *   Kyb III   Kyber768
  *   Kyb V     Kyber1024
+ *   ML-KEM (FIPS 203)
+ *     ML-KEM-768
+ *     ML-KEM-1024
  *
  * define
  *    USE_STATIC_MLCA  -- make public functions static; suitable for

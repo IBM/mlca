@@ -13,8 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 --
-This software contains code derived and modified from pq-crystals/kyber and
-pq-crystals/dilithium released under Apache-2.0
+This software contains code derived and modified from pq-crystals/kyber
+released under Apache-2.0
+
+--
+This software contains code derived and modified from pq-crystals/dilithium
+released under Apache-2.0 OR GPL-2.0-only
 
 --
 The test code for Known Answer Tests (KAT) and the CTRDRBG as been derived from 
