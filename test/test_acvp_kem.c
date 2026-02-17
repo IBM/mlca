@@ -415,6 +415,7 @@ int main(int argc, char **argv) {
 	}
 
 err:
+	mlca_ctx_free(&ctx);
 	free(prng_output_stream_bytes);
 	free(kg_pk_bytes);
 	free(kg_sk_bytes);
