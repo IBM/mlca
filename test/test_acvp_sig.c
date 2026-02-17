@@ -515,6 +515,12 @@ err:
 	free(prng_output_stream_bytes);
 	free(kg_pk_bytes);
 	free(kg_sk_bytes);
+	free(sigGen_sk_bytes);
+	free(sigGen_msg_bytes);
+	free(sigGen_sig_bytes);
+	free(sigVer_pk_bytes);
+	free(sigVer_msg_bytes);
+	free(sigVer_sig_bytes);
 
 	if (rc != EXIT_SUCCESS) {
 		return EXIT_FAILURE;
