@@ -90,6 +90,26 @@ add_test(Dilithium87_R2-kat_chain mlca_test Dilithium87_R2 kat_chain)
 add_test(SHA3-256 mlca_test_keccak SHA3-256)
 add_test(SHA3-512 mlca_test_keccak SHA3-512)
 
+# Wycheproof test vectors (requires Python 3 + pytest)
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if (Python3_FOUND)
+    add_test(NAME wycheproof_mldsa_verify
+             COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/test_wycheproof.py::test_wycheproof_mldsa_verify -v
+             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    add_test(NAME wycheproof_mldsa_sign_noseed
+             COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/test_wycheproof.py::test_wycheproof_mldsa_sign_noseed -v
+             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    add_test(NAME wycheproof_mldsa_sign_seed
+             COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/test_wycheproof.py::test_wycheproof_mldsa_sign_seed -v
+             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    add_test(NAME wycheproof_mlkem_encaps
+             COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/test_wycheproof.py::test_wycheproof_mlkem_encaps -v
+             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    add_test(NAME wycheproof_mlkem_keygen
+             COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/test_wycheproof.py::test_wycheproof_mlkem_keygen -v
+             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif()
+
 OPTION(MLCA_OQS_INTEROP_TEST "OQS Interop test" OFF)
 OPTION(MLCA_NO_VALGRIND "No valgrind available" ON)
 

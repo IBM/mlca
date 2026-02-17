@@ -41,6 +41,9 @@ jobs:
       - name: ACVP tests
         run: python3 -m pytest test/test_acvp.py -v
 
+      - name: Wycheproof tests
+        run: python3 -m pytest test/test_wycheproof.py -v
+
       - name: Build and Clang sanitizers
         run: |
             ldd --version

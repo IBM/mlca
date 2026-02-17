@@ -414,9 +414,100 @@ int main(int argc, char **argv) {
 
 		rc = sig_ver_vector(&ctx, sigVer_pk_bytes, sigVer_msg_bytes, msgLen, sigVer_sig_bytes, sigVerPassed);
 
+	} else if (!strcmp(test_name, "sigGenFromSeed")) {
+		/* Wycheproof sign_seed: derive (pk, sk) from seed, then sign deterministically */
+		char *seed_hex = argv[3];
+		char *seedMsg_hex = argv[4];
+		char *seedSig_hex = argv[5];
+
+		if (strlen(seed_hex) % 2 != 0 ||
+		    strlen(seedMsg_hex) % 2 != 0 ||
+		    strlen(seedSig_hex) != 2 * sigLen) {
+			rc = EXIT_FAILURE;
+			goto err;
+		}
+
+		size_t seedLen = strlen(seed_hex) / 2;
+		msgLen = strlen(seedMsg_hex) / 2;
+
+		uint8_t *seed_bytes = malloc(seedLen);
+		uint8_t *derived_pk = malloc(pkLen);
+		uint8_t *derived_sk = malloc(skLen);
+		uint8_t *seedMsg_bytes = malloc(msgLen);
+		uint8_t *seedSig_bytes = malloc(sigLen);
+		uint8_t *out_sig = malloc(sigLen);
+
+		if (!seed_bytes || !derived_pk || !derived_sk || !seedMsg_bytes || !seedSig_bytes || !out_sig) {
+			fprintf(stderr, "[vectors_sig] ERROR: malloc failed!\n");
+			free(seed_bytes); free(derived_pk); free(derived_sk);
+			free(seedMsg_bytes); free(seedSig_bytes); free(out_sig);
+			rc = EXIT_FAILURE;
+			goto err;
+		}
+
+		hexStringToByteArray(seed_hex, seed_bytes);
+		hexStringToByteArray(seedMsg_hex, seedMsg_bytes);
+		hexStringToByteArray(seedSig_hex, seedSig_bytes);
+
+		/* Derive keypair from seed */
+		mlca_random_t rng;
+		rng.randombytes = MLDSA_randombytes;
+		rng.randombytes_init = MLDSA_randombytes_init;
+		MLDSA_randombytes_init(&rng, seed_bytes, NULL, 0);
+		int rc2 = mlca_set_rng(&ctx, &rng);
+		if (rc2) {
+			fprintf(stderr, "[vectors_sig] %s ERROR: mlca_set_rng failed for keygen!\n", alg_name);
+			free(seed_bytes); free(derived_pk); free(derived_sk);
+			free(seedMsg_bytes); free(seedSig_bytes); free(out_sig);
+			rc = EXIT_FAILURE;
+			goto err;
+		}
+		rc2 = mlca_sig_keygen(&ctx, derived_pk, derived_sk);
+		if (rc2) {
+			fprintf(stderr, "[vectors_sig] %s ERROR: mlca_sig_keygen failed!\n", alg_name);
+			free(seed_bytes); free(derived_pk); free(derived_sk);
+			free(seedMsg_bytes); free(seedSig_bytes); free(out_sig);
+			rc = EXIT_FAILURE;
+			goto err;
+		}
+
+		/* Sign deterministically (rnd = 0^32) */
+		uint8_t *zero_rnd = calloc(1, 32);
+		MLDSA_randombytes_init(&rng, zero_rnd, NULL, 0);
+		rc2 = mlca_set_rng(&ctx, &rng);
+		if (rc2) {
+			free(zero_rnd);
+			free(seed_bytes); free(derived_pk); free(derived_sk);
+			free(seedMsg_bytes); free(seedSig_bytes); free(out_sig);
+			rc = EXIT_FAILURE;
+			goto err;
+		}
+
+		size_t outSigLen = sigLen;
+		rc2 = mlca_sig_sign_internal(&ctx, out_sig, &outSigLen, seedMsg_bytes, msgLen, derived_sk);
+		if (rc2) {
+			fprintf(stderr, "[vectors_sig] %s ERROR: mlca_sig_sign_internal failed!\n", alg_name);
+			free(zero_rnd);
+			free(seed_bytes); free(derived_pk); free(derived_sk);
+			free(seedMsg_bytes); free(seedSig_bytes); free(out_sig);
+			rc = EXIT_FAILURE;
+			goto err;
+		}
+
+		if (!memcmp(out_sig, seedSig_bytes, sigLen)) {
+			rc = EXIT_SUCCESS;
+		} else {
+			fprintf(stderr, "[vectors_sig] %s ERROR: signature doesn't match (sigGenFromSeed)!\n", alg_name);
+			rc = EXIT_FAILURE;
+		}
+
+		free(zero_rnd);
+		free(seed_bytes); free(derived_pk); free(derived_sk);
+		free(seedMsg_bytes); free(seedSig_bytes); free(out_sig);
+
 	} else {
 		rc = EXIT_FAILURE;
-		printf("[vectors_sig] %s only keyGen/sigGen/sigVer supported!\n", alg_name);
+		printf("[vectors_sig] %s only keyGen/sigGen/sigVer/sigGenFromSeed supported!\n", alg_name);
 	}
 
 err:
