@@ -12,6 +12,9 @@
 #include <mlca2.h>
 #include <stdint.h>
 
+/* Distinguish rejected input from a failed vector comparison or runtime error. */
+#define INPUT_REJECTED 2
+
 struct {
 	const uint8_t *pos;
 } prng_state = {
@@ -137,11 +140,10 @@ cleanup:
 	return ret;
 }
 
-static int sig_ver_vector(mlca_ctx_t * ctx,
-						  const uint8_t *sigVer_pk_bytes, 
-						  const uint8_t *sigVer_msg_bytes, 
-						  size_t msgLen, 
-						  const uint8_t *sigVer_sig_bytes, int testPassed) {
+static int sig_ver_vector(mlca_ctx_t *ctx,
+                          const uint8_t *sigVer_pk_bytes,
+                          const uint8_t *sigVer_msg_bytes, size_t msgLen,
+                          const uint8_t *sigVer_sig_bytes, size_t sigLen, int testPassed) {
 
 	uint8_t *entropy_input;
 	FILE *fh = NULL;
@@ -149,7 +151,6 @@ static int sig_ver_vector(mlca_ctx_t * ctx,
 
     size_t pkLen = mlca_sig_crypto_publickeybytes(ctx);
     size_t skLen = mlca_sig_crypto_secretkeybytes(ctx);
-	size_t sigLen = mlca_sig_crypto_bytes(ctx);
     const char *algName = mlca_algorithm_name(ctx);
 
 	fh = stdout;
@@ -262,7 +263,8 @@ int main(int argc, char **argv) {
 	int rc = EXIT_SUCCESS;
     mlca_ctx_t ctx = {};
 
-	if (argc == 222) {
+	if (argc < 6 ||
+	    ((!strcmp(argv[2], "sigVer") || !strcmp(argv[2], "sigGen_rnd")) && argc != 7)) {
 		fprintf(stderr, "Usage: test_acvp_sig algname testname [testargs]\n");
 		fprintf(stderr, "\n");
 		printf("\n");
@@ -360,6 +362,11 @@ int main(int argc, char **argv) {
 			}
 		}
 
+		/* The public API takes a fixed-size private-key buffer. */
+		if (strlen(sigGen_sk) != 2 * skLen) {
+			rc = INPUT_REJECTED;
+			goto err;
+		}
 		if ( strlen(sigGen_msg) % 2 != 0 ||
 		     strlen(sigGen_sig) != 2 * sigLen) {
 			rc = EXIT_FAILURE;
@@ -369,10 +376,10 @@ int main(int argc, char **argv) {
 		msgLen = strlen(sigGen_msg) / 2;
 		
 		sigGen_sk_bytes = malloc(skLen);
-		sigGen_msg_bytes = malloc(msgLen);
+		sigGen_msg_bytes = malloc(msgLen ? msgLen : 1);
 		sigGen_sig_bytes = malloc(sigLen);
 
-		if ((sigGen_msg_bytes == NULL) || (sigGen_sig_bytes == NULL)) {
+		if (!sigGen_sk_bytes || !sigGen_msg_bytes || !sigGen_sig_bytes) {
 			fprintf(stderr, "[vectors_sig] ERROR: malloc failed!\n");
 			rc = EXIT_FAILURE;
 			goto err;
@@ -394,38 +401,169 @@ int main(int argc, char **argv) {
 
 		int sigVerPassed = atoi(argv[6]);
 
+		/* Keys have no length argument in the public API; check before decoding. */
+		if (strlen(sigVer_pk) != 2 * pkLen) {
+			rc = INPUT_REJECTED;
+			goto err;
+		}
 		if ( strlen(sigVer_msg) % 2 != 0 ||
-		     strlen(sigVer_sig) != 2 * sigLen ||
-			 strlen(sigVer_pk) != 2 * pkLen ||
-			 (sigVerPassed != 0 && sigVerPassed != 1)) {
+		     strlen(sigVer_sig) % 2 != 0 ||
+		     (sigVerPassed != 0 && sigVerPassed != 1)) {
 			rc = EXIT_FAILURE;
 			goto err;
 		}
 
 		msgLen = strlen(sigVer_msg) / 2;
+		size_t actualSigLen = strlen(sigVer_sig) / 2;
 		
 		sigVer_pk_bytes = malloc(pkLen);
-		sigVer_msg_bytes = malloc(msgLen);
-		sigVer_sig_bytes = malloc(sigLen);
+		sigVer_msg_bytes = malloc(msgLen ? msgLen : 1);
+		sigVer_sig_bytes = malloc(actualSigLen ? actualSigLen : 1);
+		if (!sigVer_pk_bytes || !sigVer_msg_bytes || !sigVer_sig_bytes) {
+			rc = EXIT_FAILURE;
+			goto err;
+		}
 
 		hexStringToByteArray(sigVer_pk, sigVer_pk_bytes);
 		hexStringToByteArray(sigVer_msg, sigVer_msg_bytes);
 		hexStringToByteArray(sigVer_sig, sigVer_sig_bytes);
 
-		rc = sig_ver_vector(&ctx, sigVer_pk_bytes, sigVer_msg_bytes, msgLen, sigVer_sig_bytes, sigVerPassed);
+		rc = sig_ver_vector(&ctx, sigVer_pk_bytes, sigVer_msg_bytes, msgLen, sigVer_sig_bytes, actualSigLen, sigVerPassed);
+
+	} else if (!strcmp(test_name, "sigGenFromSeed")) {
+		/* Wycheproof sign_seed: derive (pk, sk) from seed, then sign deterministically */
+		char *seed_hex = argv[3];
+		char *seedMsg_hex = argv[4];
+		char *seedSig_hex = argv[5];
+
+		if (strlen(seed_hex) != 64) {
+			rc = INPUT_REJECTED;
+			goto err;
+		}
+		if (strlen(seedMsg_hex) % 2 != 0 ||
+		    strlen(seedSig_hex) != 2 * sigLen) {
+			rc = EXIT_FAILURE;
+			goto err;
+		}
+
+		size_t seedLen = strlen(seed_hex) / 2;
+		msgLen = strlen(seedMsg_hex) / 2;
+
+		uint8_t *seed_bytes = malloc(seedLen);
+		uint8_t *derived_pk = malloc(pkLen);
+		uint8_t *derived_sk = malloc(skLen);
+		uint8_t *seedMsg_bytes = malloc(msgLen ? msgLen : 1);
+		uint8_t *seedSig_bytes = malloc(sigLen);
+		uint8_t *out_sig = malloc(sigLen);
+
+		if (!seed_bytes || !derived_pk || !derived_sk || !seedMsg_bytes || !seedSig_bytes || !out_sig) {
+			fprintf(stderr, "[vectors_sig] ERROR: malloc failed!\n");
+			free(seed_bytes);
+			free(derived_pk);
+			free(derived_sk);
+			free(seedMsg_bytes);
+			free(seedSig_bytes);
+			free(out_sig);
+			rc = EXIT_FAILURE;
+			goto err;
+		}
+
+		hexStringToByteArray(seed_hex, seed_bytes);
+		hexStringToByteArray(seedMsg_hex, seedMsg_bytes);
+		hexStringToByteArray(seedSig_hex, seedSig_bytes);
+
+		/* Derive keypair from seed */
+		mlca_random_t rng;
+		rng.randombytes = MLDSA_randombytes;
+		rng.randombytes_init = MLDSA_randombytes_init;
+		MLDSA_randombytes_init(&rng, seed_bytes, NULL, 0);
+		int rc2 = mlca_set_rng(&ctx, &rng);
+		if (rc2) {
+			fprintf(stderr, "[vectors_sig] %s ERROR: mlca_set_rng failed for keygen!\n", alg_name);
+			free(seed_bytes);
+			free(derived_pk);
+			free(derived_sk);
+			free(seedMsg_bytes);
+			free(seedSig_bytes);
+			free(out_sig);
+			rc = EXIT_FAILURE;
+			goto err;
+		}
+		rc2 = mlca_sig_keygen(&ctx, derived_pk, derived_sk);
+		if (rc2) {
+			fprintf(stderr, "[vectors_sig] %s ERROR: mlca_sig_keygen failed!\n", alg_name);
+			free(seed_bytes);
+			free(derived_pk);
+			free(derived_sk);
+			free(seedMsg_bytes);
+			free(seedSig_bytes);
+			free(out_sig);
+			rc = EXIT_FAILURE;
+			goto err;
+		}
+
+		/* Sign deterministically (rnd = 0^32) */
+		uint8_t zero_rnd[32] = { 0 };
+		MLDSA_randombytes_init(&rng, zero_rnd, NULL, 0);
+		rc2 = mlca_set_rng(&ctx, &rng);
+		if (rc2) {
+			free(seed_bytes);
+			free(derived_pk);
+			free(derived_sk);
+			free(seedMsg_bytes);
+			free(seedSig_bytes);
+			free(out_sig);
+			rc = EXIT_FAILURE;
+			goto err;
+		}
+
+		size_t outSigLen = sigLen;
+		rc2 = mlca_sig_sign_internal(&ctx, out_sig, &outSigLen, seedMsg_bytes, msgLen, derived_sk);
+		if (rc2) {
+			fprintf(stderr, "[vectors_sig] %s ERROR: mlca_sig_sign_internal failed!\n", alg_name);
+			free(seed_bytes);
+			free(derived_pk);
+			free(derived_sk);
+			free(seedMsg_bytes);
+			free(seedSig_bytes);
+			free(out_sig);
+			rc = EXIT_FAILURE;
+			goto err;
+		}
+
+		if (!memcmp(out_sig, seedSig_bytes, sigLen)) {
+			rc = EXIT_SUCCESS;
+		} else {
+			fprintf(stderr, "[vectors_sig] %s ERROR: signature doesn't match (sigGenFromSeed)!\n", alg_name);
+			rc = EXIT_FAILURE;
+		}
+
+		free(seed_bytes);
+		free(derived_pk);
+		free(derived_sk);
+		free(seedMsg_bytes);
+		free(seedSig_bytes);
+		free(out_sig);
 
 	} else {
 		rc = EXIT_FAILURE;
-		printf("[vectors_sig] %s only keyGen/sigGen/sigVer supported!\n", alg_name);
+		printf("[vectors_sig] %s only keyGen/sigGen/sigVer/sigGenFromSeed supported!\n", alg_name);
 	}
 
 err:
+	mlca_ctx_free(&ctx);
 	free(prng_output_stream_bytes);
 	free(kg_pk_bytes);
 	free(kg_sk_bytes);
+	free(sigGen_sk_bytes);
+	free(sigGen_msg_bytes);
+	free(sigGen_sig_bytes);
+	free(sigVer_pk_bytes);
+	free(sigVer_msg_bytes);
+	free(sigVer_sig_bytes);
 
 	if (rc != EXIT_SUCCESS) {
-		return EXIT_FAILURE;
+		return rc == INPUT_REJECTED ? INPUT_REJECTED : EXIT_FAILURE;
 	} else {
 		return EXIT_SUCCESS;
 	}

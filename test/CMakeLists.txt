@@ -90,6 +90,28 @@ add_test(Dilithium87_R2-kat_chain mlca_test Dilithium87_R2 kat_chain)
 add_test(SHA3-256 mlca_test_keccak SHA3-256)
 add_test(SHA3-512 mlca_test_keccak SHA3-512)
 
+# Wycheproof test vectors (requires Python 3 + pytest)
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if (Python3_FOUND)
+    execute_process(COMMAND "${Python3_EXECUTABLE}" -c "import pytest"
+                    RESULT_VARIABLE MLCA_PYTEST_STATUS
+                    OUTPUT_QUIET ERROR_QUIET)
+    if (MLCA_PYTEST_STATUS EQUAL 0)
+        foreach(suite mldsa_verify mldsa_sign_noseed mldsa_sign_seed
+                      mlkem_encaps mlkem_keygen mlkem_decaps seed_length)
+            add_test(NAME wycheproof_${suite}
+                     COMMAND "${CMAKE_COMMAND}" -E env
+                             "MLCA_SIG_EXE=$<TARGET_FILE:mlca_acvp_sig>"
+                             "MLCA_KEM_EXE=$<TARGET_FILE:mlca_acvp_kem>"
+                             "${Python3_EXECUTABLE}" -m pytest
+                             "${CMAKE_CURRENT_SOURCE_DIR}/test_wycheproof.py::test_wycheproof_${suite}" -ra
+                     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+        endforeach()
+    else()
+        message(STATUS "Wycheproof tests disabled: ${Python3_EXECUTABLE} has no pytest")
+    endif()
+endif()
+
 OPTION(MLCA_OQS_INTEROP_TEST "OQS Interop test" OFF)
 OPTION(MLCA_NO_VALGRIND "No valgrind available" ON)
 

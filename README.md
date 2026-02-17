@@ -50,6 +50,10 @@ To run the complete test harness, run `ctest`.
 
 NIST ACVP static test vectors can be downloaded from the [ACVP-Server](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files) repository. Run the tests with `python3 test/test_acvp.py`.
 
+### Wycheproof
+
+Wycheproof tests for ML-DSA and ML-KEM require Python 3 and pytest. Run them with `ctest --test-dir build -R wycheproof --output-on-failure`.
+
 ### NIST KAT
 
 NIST KAT tests are built as part of `make` as part of the `mlca_test` harness, the corresponding KAT references are available in folder `KAT`.

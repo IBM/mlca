@@ -12,6 +12,9 @@
 #include <mlca2.h>
 #include <stdint.h>
 
+/* Input rejection must not be confused with comparison or allocation failure. */
+#define INPUT_REJECTED 2
+
 struct {
 	const uint8_t *pos;
 } prng_state = {
@@ -268,11 +271,103 @@ cleanup:
 	return ret;
 }
 
+static int kem_reject_vector(mlca_ctx_t *ctx, const char *coins_hex, const char *pk_hex) {
+
+	size_t pkLen = mlca_kem_crypto_publickeybytes(ctx);
+	size_t ctLen = mlca_kem_crypto_ciphertextbytes(ctx);
+	size_t ssLen = mlca_kem_crypto_bytes(ctx);
+
+	/* Some Wycheproof cases supply a 64-byte RNG stream; encaps consumes 32. */
+	if (strlen(coins_hex) < 64 || strlen(coins_hex) % 2 != 0)
+		return EXIT_FAILURE;
+	if (strlen(pk_hex) != 2 * pkLen)
+		return INPUT_REJECTED;
+
+	uint8_t *coins = malloc(strlen(coins_hex) / 2);
+	uint8_t *pk = malloc(pkLen);
+	uint8_t *ct = malloc(ctLen);
+	uint8_t *ss = malloc(ssLen);
+	int ret = EXIT_FAILURE;
+
+	if (!coins || !pk || !ct || !ss) goto cleanup;
+
+	hexStringToByteArray(coins_hex, coins);
+	hexStringToByteArray(pk_hex, pk);
+
+	mlca_random_t rng = { 0 };
+	rng.randombytes = MLKEM_randombytes;
+	rng.randombytes_init = MLKEM_randombytes_init;
+
+	MLKEM_randombytes_init(&rng, coins, NULL, 0);
+	if (mlca_set_rng(ctx, &rng)) goto cleanup;
+
+	/* Only the expected invalid-key error counts as rejection. */
+	if (mlca_kem_enc(ctx, ct, ss, pk) == MLCA_EKEYTYPE)
+		ret = INPUT_REJECTED;
+
+cleanup:
+	free(coins);
+	free(pk);
+	free(ct);
+	free(ss);
+	return ret;
+}
+
+static int kem_dec_seed_vector(mlca_ctx_t *ctx, const char *seed_hex,
+                               const char *pk_hex, const char *ss_hex, const char *ct_hex) {
+
+	size_t pkLen = mlca_kem_crypto_publickeybytes(ctx);
+	size_t skLen = mlca_kem_crypto_secretkeybytes(ctx);
+	size_t ctLen = mlca_kem_crypto_ciphertextbytes(ctx);
+	size_t ssLen = mlca_kem_crypto_bytes(ctx);
+
+	/* The public API has fixed-size seed and ciphertext inputs. */
+	if (strlen(seed_hex) != 128 || strlen(ct_hex) != 2 * ctLen)
+		return INPUT_REJECTED;
+	if (strlen(pk_hex) != 2 * pkLen || strlen(ss_hex) != 2 * ssLen)
+		return EXIT_FAILURE;
+
+	uint8_t seed[64];
+	uint8_t *pk = malloc(pkLen);
+	uint8_t *sk = malloc(skLen);
+	uint8_t *expected_pk = malloc(pkLen);
+	uint8_t *ct = malloc(ctLen);
+	uint8_t *ss = malloc(ssLen);
+	int ret = EXIT_FAILURE;
+
+	if (!pk || !sk || !expected_pk || !ct || !ss) goto cleanup;
+
+	hexStringToByteArray(seed_hex, seed);
+	hexStringToByteArray(pk_hex, expected_pk);
+	hexStringToByteArray(ct_hex, ct);
+	hexStringToByteArray(ss_hex, ss);
+
+	mlca_random_t rng = { 0 };
+	rng.randombytes = MLKEM_randombytes;
+	rng.randombytes_init = MLKEM_randombytes_init;
+
+	MLKEM_randombytes_init(&rng, seed, NULL, 0);
+	if (mlca_set_rng(ctx, &rng) || mlca_kem_keygen(ctx, pk, sk)) goto cleanup;
+	if (memcmp(pk, expected_pk, pkLen)) goto cleanup;
+
+	ret = kem_vector_encdec_val(ctx, sk, ct, ss);
+
+cleanup:
+	free(pk);
+	free(sk);
+	free(expected_pk);
+	free(ct);
+	free(ss);
+	return ret;
+}
+
 int main(int argc, char **argv) {
 	int rc = EXIT_SUCCESS;
     mlca_ctx_t ctx = {};
 
-	if (argc == 222) {
+	if (argc < 3 ||
+	    (!strcmp(argv[2], "encReject") ? argc != 5 :
+	     (!strcmp(argv[2], "encDecAFT") || !strcmp(argv[2], "decFromSeed")) ? argc != 7 : argc != 6)) {
 		fprintf(stderr, "Usage: test_acvp_kem algname testname [testargs]\n");
 		fprintf(stderr, "\n");
 		printf("\n");
@@ -407,14 +502,17 @@ int main(int argc, char **argv) {
 		hexStringToByteArray(encdec_val_c, encdec_val_c_bytes);
 
 		rc = kem_vector_encdec_val(&ctx, encdec_val_sk_bytes, encdec_val_c_bytes, encdec_val_k_bytes);
-
-
+	} else if (!strcmp(test_name, "encReject")) {
+		rc = kem_reject_vector(&ctx, argv[3], argv[4]);
+	} else if (!strcmp(test_name, "decFromSeed")) {
+		rc = kem_dec_seed_vector(&ctx, argv[3], argv[4], argv[5], argv[6]);
 	} else {
         rc = EXIT_FAILURE;
-		printf("[test_acvp_kem] %s only keyGen supported!\n", alg_name);
+		printf("[test_acvp_kem] %s unsupported test mode!\n", alg_name);
 	}
 
 err:
+	mlca_ctx_free(&ctx);
 	free(prng_output_stream_bytes);
 	free(kg_pk_bytes);
 	free(kg_sk_bytes);
@@ -426,7 +524,7 @@ err:
 	free(encdec_val_sk_bytes);
 
 	if (rc != EXIT_SUCCESS) {
-		return EXIT_FAILURE;
+		return rc == INPUT_REJECTED ? INPUT_REJECTED : EXIT_FAILURE;
 	} else {
 		return EXIT_SUCCESS;
 	}

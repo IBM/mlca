@@ -2886,7 +2886,7 @@ r3_kpack_pk3(unsigned char wire[ 1184 /* 3 *384 +32 */ ],
 
 static int
 mlkem_pack_check_pk3(const kpolyvec3 *pk,
-    const uint8_t wire[KYB_PUB3_BYTES])
+                     const uint8_t wire[KYB_PUB3_BYTES])
 {
 	uint8_t diff = 0;
 	unsigned int k, i;
@@ -2897,19 +2897,17 @@ mlkem_pack_check_pk3(const kpolyvec3 *pk,
 	for (k = 0; k < 3; ++k) {
 		a = &(pk->vec[k]);
 		for ( i = 0; i < KYB_N / 2; i++ ) {
-        	// map to positive standard representatives
-        	t0 = a->coeffs[2 * i];
-        	t0 += ((int16_t)t0 >> 15) & KYB_Q;
-        	t1 = a->coeffs[2 * i + 1];
-        	t1 += ((int16_t)t1 >> 15) & KYB_Q;
+			// Decoded coefficients are 12-bit: 4095 < 2*q, so subtract once.
+			t0 = kyb__csubq(a->coeffs[2 * i]);
+			t1 = kyb__csubq(a->coeffs[2 * i + 1]);
 
-        	diff |= *r++ ^ (uint8_t) (t0 >> 0);
-        	diff |= *r++ ^ (uint8_t) ((t0 >> 8) | (t1 << 4));
-        	diff |= *r++ ^ (uint8_t) (t1 >> 4);
-    	}
+			diff |= *r++ ^ (uint8_t) (t0 >> 0);
+			diff |= *r++ ^ (uint8_t) ((t0 >> 8) | (t1 << 4));
+			diff |= *r++ ^ (uint8_t) (t1 >> 4);
+		}
 	}
 
-    return (-(uint64_t)diff) >> 63;
+	return (-(uint64_t)diff) >> 63;
 }
 
 /*------------------------------------*/
@@ -3207,7 +3205,7 @@ r3_kpack_pk4(unsigned char wire[ 1568 /* 4 *384 +32 */ ],
 
 static int
 mlkem_pack_check_pk4(const kpolyvec4 *pk,
-    const uint8_t wire[KYB_PUB4_BYTES])
+                     const uint8_t wire[KYB_PUB4_BYTES])
 {
 	uint8_t diff = 0;
 	unsigned int k, i;
@@ -3218,16 +3216,14 @@ mlkem_pack_check_pk4(const kpolyvec4 *pk,
 	for (k = 0; k < 4; ++k) {
 		a = &(pk->vec[k]);
 		for ( i = 0; i < KYB_N / 2; i++ ) {
-        	// map to positive standard representatives
-        	t0 = a->coeffs[2 * i];
-        	t0 += ((int16_t)t0 >> 15) & KYB_Q;
-        	t1 = a->coeffs[2 * i + 1];
-        	t1 += ((int16_t)t1 >> 15) & KYB_Q;
+			// Decoded coefficients are 12-bit: 4095 < 2*q, so subtract once.
+			t0 = kyb__csubq(a->coeffs[2 * i]);
+			t1 = kyb__csubq(a->coeffs[2 * i + 1]);
 
-        	diff |= *r++ ^ (uint8_t) (t0 >> 0);
-        	diff |= *r++ ^ (uint8_t) ((t0 >> 8) | (t1 << 4));
-        	diff |= *r++ ^ (uint8_t) (t1 >> 4);
-    	}
+			diff |= *r++ ^ (uint8_t) (t0 >> 0);
+			diff |= *r++ ^ (uint8_t) ((t0 >> 8) | (t1 << 4));
+			diff |= *r++ ^ (uint8_t) (t1 >> 4);
+		}
 	}
 
 	return (-(uint64_t)diff) >> 63;

@@ -9997,7 +9997,12 @@ static int kyb_kem1_derand(unsigned char *ct, size_t cbytes, unsigned char *shrd
     switch ( kyb_type2round(type) ) {
     case 2: indcpa_enc(ct, cbytes, buf, pub, pbytes, kr + KYB_SYMBYTES, k); break;
     case 3: r3_indcpa_enc(ct, cbytes, buf, pub, pbytes, kr + KYB_SYMBYTES, k); break;
-    case 4: mlkem_indcpa_enc(ct, cbytes, buf, pub, pbytes, kr + KYB_SYMBYTES, k, 1); break;
+    case 4:
+        if ( mlkem_indcpa_enc(ct, cbytes, buf, pub, pbytes, kr + KYB_SYMBYTES, k, 1) <= 0 ) {
+            MEMSET0_STRICT(kr, sizeof(kr));
+            return MLCA_EKEYTYPE;
+        }
+        break;
     default:  // nop
         break;
     }
