@@ -68,6 +68,50 @@
         "\x06\x0b" "\x2b\x06\x01\x04\x01\x02\x82\x0b\x05\x04\x04"
 #define CR_OID_KYB_R2_4_BYTES 13
 
+
+/* Kyber, round3 */
+
+                                                  /* 1.3.6.1.4.1.2.267.8.3.3 */
+#define CR_OID_KYB_R3_3        \
+        "\x06\x0b" "\x2b\x06\x01\x04\x01\x02\x82\x0b\x08\x03\x03"
+#define CR_OID_KYB_R3_3_BYTES 13
+
+                                                  /* 1.3.6.1.4.1.2.267.8.4.4 */
+#define CR_OID_KYB_R3_4        \
+        "\x06\x0b" "\x2b\x06\x01\x04\x01\x02\x82\x0b\x08\x04\x04"
+#define CR_OID_KYB_R3_4_BYTES 13
+
+
+/* ML-DSA (FIPS 204) */
+
+                                                  /* 2.16.840.1.101.3.4.3.17 */
+#define CR_OID_MLDSA_44        \
+        "\x06\x09" "\x60\x86\x48\x01\x65\x03\x04\x03\x11"
+#define CR_OID_MLDSA_44_BYTES 11
+
+                                                  /* 2.16.840.1.101.3.4.3.18 */
+#define CR_OID_MLDSA_65        \
+        "\x06\x09" "\x60\x86\x48\x01\x65\x03\x04\x03\x12"
+#define CR_OID_MLDSA_65_BYTES 11
+
+                                                  /* 2.16.840.1.101.3.4.3.19 */
+#define CR_OID_MLDSA_87        \
+        "\x06\x09" "\x60\x86\x48\x01\x65\x03\x04\x03\x13"
+#define CR_OID_MLDSA_87_BYTES 11
+
+
+/* ML-KEM (FIPS 203) */
+
+                                                  /* 2.16.840.1.101.3.4.4.2 */
+#define CR_OID_MLKEM_768        \
+        "\x06\x09" "\x60\x86\x48\x01\x65\x03\x04\x04\x02"
+#define CR_OID_MLKEM_768_BYTES 11
+
+                                                  /* 2.16.840.1.101.3.4.4.3 */
+#define CR_OID_MLKEM_1024        \
+        "\x06\x09" "\x60\x86\x48\x01\x65\x03\x04\x04\x03"
+#define CR_OID_MLKEM_1024_BYTES 11
+
 /*-----  special purposes  -------------------------------------------------*/
 
                                                   /* 1.3.6.1.4.1.2.267.999.1 */
