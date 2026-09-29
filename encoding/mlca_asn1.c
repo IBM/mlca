@@ -42,27 +42,22 @@ int mlca_asn_something_validate(unsigned char *wire, size_t wbytes,
                                                      size_t seq_net_bytes,
                                               unsigned char tag)
 {
-    int res = -1;
-    int size = 0;
+    size_t size = CRS__ASN_TLLEN(seq_net_bytes);
 
-	if (seq_net_bytes < 0x80) {                   // [tag] ...len... 00
-		if (wire && (wbytes >= 2)) {
-			res &= 0 - (*(wire - 2) == tag);
-			res &= 0 - (*(wire - 1) == (unsigned char) seq_net_bytes);
-		}
-        size = 2;
-	} else {                                      // assume  [tag] 82 xx yy
-		if (wire && (wbytes >= 4)) {
-			res &= 0 - (*(wire - 4) == tag);
-			res &= 0 - (*(wire - 3) == 0x82);
-			res &= 0 - (*(wire - 2) ==
-				(unsigned char) (seq_net_bytes >> 8));
-			res &= 0 - (*(wire - 1) ==
-				(unsigned char)  seq_net_bytes);
-		}
-        size = 4;
-	}
-    return res & size;
+    if (!wire || wbytes < size || seq_net_bytes > 0xffff)
+        return -1;
+    wire -= size;
+    if (wire[0] != tag)
+        return -1;
+    if (size == 2) {
+        if (wire[1] != seq_net_bytes)
+            return -1;
+    } else {
+        if (wire[1] != 0x82 || wire[2] != (seq_net_bytes >> 8) ||
+            wire[3] != (seq_net_bytes & 0xff))
+            return -1;
+    }
+    return (int)size;
 }
 
 //--------------------------------------
@@ -291,88 +286,125 @@ static int mlca_asn_prikey_draft_uni_qsckeys_00_encode(const mlca_encoding_impl_
 
 // Key-specific functions
 MLCA_RC mlca_encode_raw(const mlca_encoding_impl_t* ctx_out, const mlca_encoding_impl_t* ctx_in, unsigned char* pk, unsigned char** pkenc, unsigned char* sk, unsigned char** skenc) {
-    *pkenc = pk;
-    *skenc = sk;
+    if (pkenc)
+        *pkenc = pk;
+    if (skenc)
+        *skenc = sk;
     return MLCA_OK;
 }
 
 MLCA_RC mlca_decode_raw(const mlca_encoding_impl_t* ctx_out, const mlca_encoding_impl_t* ctx_in, unsigned char* pk, unsigned char** pkdec, unsigned char* sk, unsigned char** skdec) {
-    *pkdec = pk;
-    *skdec = sk;
+    if (pkdec)
+        *pkdec = pk;
+    if (skdec)
+        *skdec = sk;
     return MLCA_OK;
 }
 
-static int validate_decode_asntl(const mlca_asntl_t* asntlstr, int asntllen, size_t obytes, unsigned char* k) {
-
+static int validate_decode_asntl(const mlca_asntl_t* asntlstr, int asntllen, size_t ibytes, unsigned char* k) {
     unsigned char* kin = k;
-
-    size_t pkoutbytes = obytes;
+    size_t remaining = ibytes;
 
     for (int i = asntllen - 1; i >= 0; --i) {
         int asnlen = asntlstr[i].asnlen;
         int asntag = asntlstr[i].asntag;
-        int asnopt = asntlstr[i].optional;
-        int asnval = asntlstr[i].asnvalue;
-        int asndecskip = asntlstr[i].asndecskip;
 
-        if (asntag != CRS__ASN1_SEQUENCE)
-            kin -= asnlen;
-
-        if (!asndecskip && asntag != CRS__ASN1_SEQUENCE)
-            pkoutbytes -= asnlen;
-
-        int asntaglen = mlca_asn_something_validate(kin, pkoutbytes, asnlen, asntag);
-        if (!asntaglen)
+        if (asnlen < 0)
             return -1;
+        if (asntag != CRS__ASN1_SEQUENCE) {
+            if ((size_t)asnlen > remaining)
+                return -1;
+            kin -= asnlen;
+            remaining -= asnlen;
+            if (asntag == CRS__ASN1_INT &&
+                (asnlen != 1 || *kin != asntlstr[i].asnvalue))
+                return -1;
+        }
 
+        int asntaglen = mlca_asn_something_validate(kin, remaining, asnlen, asntag);
+        if (asntaglen <= 0)
+            return -1;
         kin -= asntaglen;
+        remaining -= asntaglen;
     }
 
-    return pkoutbytes >= 0;
+    return (int)(ibytes - remaining);
+}
+
+static int validate_frame(unsigned char** wire, size_t* remaining, size_t bytes, unsigned char tag) {
+    int size = mlca_asn_something_validate(*wire, *remaining, bytes, tag);
+    if (size <= 0)
+        return -1;
+    *wire -= size;
+    *remaining -= size;
+    return size;
+}
+
+static int validate_key_encoding(const mlca_encoding_impl_t* ctx, unsigned char* key, int private_key) {
+    size_t bytes = private_key ? ctx->crypto_secretkeybytes : ctx->crypto_publickeybytes;
+    const mlca_asntl_t* asntl = private_key ? ctx->sk_asntl : ctx->pk_asntl;
+    int asntllen = private_key ? ctx->sk_asntl_len : ctx->pk_asntl_len;
+    unsigned char* wire = key + bytes;
+    int innerbytes = validate_decode_asntl(asntl, asntllen, bytes, wire);
+    if (innerbytes <= 0)
+        return -1;
+
+    size_t remaining = bytes - innerbytes;
+    wire -= innerbytes;
+    if (ctx->encode == mlca_encode_draft_uni_qsckeys_01_inner)
+        return remaining == 0 ? 0 : -1;
+
+    if (validate_frame(&wire, &remaining, innerbytes,
+                       private_key ? CRS__ASN1_OCTETSTRING : CRS__ASN1_BITSTRING) <= 0)
+        return -1;
+    if (validate_frame(&wire, &remaining, 0, CRS__ASN1_NULL) <= 0)
+        return -1;
+
+    size_t oidbytes = strlen(ctx->algorithm_oid);
+    if (oidbytes > remaining || memcmp(wire - oidbytes, ctx->algorithm_oid, oidbytes))
+        return -1;
+    wire -= oidbytes;
+    remaining -= oidbytes;
+    if (validate_frame(&wire, &remaining, oidbytes + CRS__ASN_NULL_BYTES, CRS__ASN1_SEQUENCE) <= 0)
+        return -1;
+
+    if (private_key) {
+        if (!remaining || *--wire != 0)
+            return -1;
+        --remaining;
+        if (validate_frame(&wire, &remaining, 1, CRS__ASN1_INT) <= 0)
+            return -1;
+    }
+    if (validate_frame(&wire, &remaining, bytes - remaining, CRS__ASN1_SEQUENCE) <= 0)
+        return -1;
+    return remaining == 0 ? 0 : -1;
 }
 
 static int decode_asntl(const mlca_asntl_t* asntlstr, int asntllen, size_t obytes, unsigned char* k, unsigned char* kdec, char asndec_flag) {
-    int wr = 0;
-    unsigned char* kout = kdec, *kin = k;
+    size_t ibytes = asntlstr[0].asnlen + CRS__ASN_TLLEN(asntlstr[0].asnlen);
+    unsigned char* kin = k - ibytes;
+    unsigned char* kout = kdec - obytes;
+    size_t wr = 0;
 
-    if (validate_decode_asntl(asntlstr, asntllen, obytes, k) <= 0) {
-        return -1;
-    }
-
-    size_t pkoutbytes = obytes;
-
-    for (int i = asntllen - 1; i >= 0; --i) {
-        int asnlen = asntlstr[i].asnlen;
+    for (int i = 0; i < asntllen; ++i) {
+        size_t asnlen = asntlstr[i].asnlen;
         int asntag = asntlstr[i].asntag;
-        int asnopt = asntlstr[i].optional;
-        int asnval = asntlstr[i].asnvalue;
         int asndecskip = asntlstr[i].asndecskip || !(asntlstr[i].asndec_flag & asndec_flag);
 
-        if (asntag == CRS__ASN1_INT) {
-            if (!asndecskip) {
-                *(kout - asnlen) = *(kin - asnlen);
-                kout -= asnlen;
-                pkoutbytes -= asnlen;
-                wr += asnlen;
-            }
-            kin -= asnlen;
-        } else if (asntag != CRS__ASN1_SEQUENCE) {
-            if (!asndecskip) {
-                memmove(kout - asnlen, kin - asnlen, asnlen);
-                kout -= asnlen;
-                pkoutbytes -= asnlen;
-                wr += asnlen;
-            }
-            kin -= asnlen;
+        kin += CRS__ASN_TLLEN(asnlen);
+        if (asntag == CRS__ASN1_SEQUENCE)
+            continue;
+        if (!asndecskip) {
+            if (asnlen > obytes - wr)
+                return -1;
+            memmove(kout, kin, asnlen);
+            kout += asnlen;
+            wr += asnlen;
         }
-
-        int asntaglen = mlca_asn_something(0, pkoutbytes, asnlen, asntag);
-        if (asntaglen <= 0) return -1;
-
-        kin -= asntaglen;
+        kin += asnlen;
     }
 
-    return wr;
+    return (int)wr;
 }
 
 static int encode_asntl(const mlca_asntl_t* asntlstr, int asntllen, size_t obytes, unsigned char* k, unsigned char* k2, unsigned char* kenc) {
@@ -542,15 +574,15 @@ static int decode_PrivateKeyInfo(const mlca_encoding_impl_t* ctx_out, const mlca
     int asntllen_pk = ctx_in->pk_asntl_len;
     int asntllen_sk = ctx_in->sk_asntl_len;
 
-    int skpart = decode_asntl(asntlstr_sk, asntllen_sk, skoutbytes, skin, skout, 1);
-    if (skpart <= 0) return -1;
-
     int pkpart = ctx_out->crypto_publickeybytes;
 
     if (pkout) {
         pkpart = decode_asntl(asntlstr_sk, asntllen_sk, pkoutbytes, skin, pkout, 2);
         if (pkpart <= 0) return -1;
     }
+
+    int skpart = decode_asntl(asntlstr_sk, asntllen_sk, skoutbytes, skin, skout, 1);
+    if (skpart <= 0) return -1;
 
     if (skpart != ctx_out->crypto_secretkeybytes || pkpart != ctx_out->crypto_publickeybytes) return -1;
     return skpart;
@@ -562,22 +594,6 @@ MLCA_RC mlca_encode_draft_uni_qsckeys_01_inner(const mlca_encoding_impl_t* ctx_o
     unsigned char* skout, *skin;
     size_t pkoutbytes = ctx_out->crypto_publickeybytes;
     size_t skoutbytes = ctx_out->crypto_secretkeybytes;
-
-    if (pk && pkenc) {
-
-        pkout = (*pkenc) + ctx_out->crypto_publickeybytes;
-        pkin = pk + ctx_in->crypto_publickeybytes;
-
-        int encpk = encode_spki_PublicKey(ctx_out, ctx_in, pkin, pkout);
-        if (encpk <= 0) return -1;
-
-        pkout -= encpk;
-        pkoutbytes -= encpk;
-        wrpk += encpk;
-
-        if (wrpk != ctx_out->crypto_publickeybytes)
-            return -1;
-    }
 
     if (sk && skenc && pk) {
 
@@ -596,6 +612,22 @@ MLCA_RC mlca_encode_draft_uni_qsckeys_01_inner(const mlca_encoding_impl_t* ctx_o
         
     }
 
+    if (pk && pkenc) {
+
+        pkout = (*pkenc) + ctx_out->crypto_publickeybytes;
+        pkin = pk + ctx_in->crypto_publickeybytes;
+
+        int encpk = encode_spki_PublicKey(ctx_out, ctx_in, pkin, pkout);
+        if (encpk <= 0) return -1;
+
+        pkout -= encpk;
+        pkoutbytes -= encpk;
+        wrpk += encpk;
+
+        if (wrpk != ctx_out->crypto_publickeybytes)
+            return -1;
+    }
+
     end:
 
     return 0;
@@ -607,21 +639,6 @@ MLCA_RC mlca_encode_draft_uni_qsckeys_01(const mlca_encoding_impl_t* ctx_out, co
     unsigned char* skout, *skin;
     size_t pkoutbytes = ctx_out->crypto_publickeybytes;
     size_t skoutbytes = ctx_out->crypto_secretkeybytes;
-
-    if (pk && pkenc) {
-        pkout = (*pkenc) + ctx_out->crypto_publickeybytes;
-        pkin = pk + ctx_in->crypto_publickeybytes;
-
-        int encpk = encode_SubjectPublicKeyInfo(ctx_out, ctx_in, pkin, pkout);
-        if (encpk <= 0) return -1;
-
-        pkout -= encpk;
-        pkoutbytes -= encpk;
-        wrpk += encpk;
-
-        if (wrpk != ctx_out->crypto_publickeybytes)
-            return -1;
-    }
 
     if (sk && skenc && pk) {
         skout = (*skenc) + ctx_out->crypto_secretkeybytes;
@@ -635,6 +652,21 @@ MLCA_RC mlca_encode_draft_uni_qsckeys_01(const mlca_encoding_impl_t* ctx_out, co
         wrsk += encprik;
 
         if (wrsk != ctx_out->crypto_secretkeybytes)
+            return -1;
+    }
+
+    if (pk && pkenc) {
+        pkout = (*pkenc) + ctx_out->crypto_publickeybytes;
+        pkin = pk + ctx_in->crypto_publickeybytes;
+
+        int encpk = encode_SubjectPublicKeyInfo(ctx_out, ctx_in, pkin, pkout);
+        if (encpk <= 0) return -1;
+
+        pkout -= encpk;
+        pkoutbytes -= encpk;
+        wrpk += encpk;
+
+        if (wrpk != ctx_out->crypto_publickeybytes)
             return -1;
     }
 
@@ -652,6 +684,11 @@ MLCA_RC mlca_decode_draft_uni_qsckeys_01(const mlca_encoding_impl_t* ctx_out, co
 
     size_t pkoutbytes = ctx_out->crypto_publickeybytes;
     size_t skoutbytes = ctx_out->crypto_secretkeybytes;
+
+    if (pk && (!pkdec || !*pkdec || validate_key_encoding(ctx_in, pk, 0)))
+        return MLCA_ESTRUCT;
+    if (sk && (!skdec || !*skdec || validate_key_encoding(ctx_in, sk, 1)))
+        return MLCA_ESTRUCT;
 
     if (pk) {
 

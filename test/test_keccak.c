@@ -81,9 +81,73 @@ static int test_sha3_256() {
     return rc;
 }
 
+static int test_shake(int bits) {
+    const uint8_t message[] = {'a', 'b', 'c'};
+    const uint8_t expected128[32] = {
+        0x58, 0x81, 0x09, 0x2d, 0xd8, 0x18, 0xbf, 0x5c,
+        0xf8, 0xa3, 0xdd, 0xb7, 0x93, 0xfb, 0xcb, 0xa7,
+        0x40, 0x97, 0xd5, 0xc5, 0x26, 0xa6, 0xd3, 0x5f,
+        0x97, 0xb8, 0x33, 0x51, 0x94, 0x0f, 0x2c, 0xc8,
+    };
+    const uint8_t expected256[32] = {
+        0x48, 0x33, 0x66, 0x60, 0x13, 0x60, 0xa8, 0x77,
+        0x1c, 0x68, 0x63, 0x08, 0x0c, 0xc4, 0x11, 0x4d,
+        0x8d, 0xb4, 0x45, 0x30, 0xf8, 0xf1, 0xe1, 0xee,
+        0x4f, 0x94, 0xea, 0x37, 0xe7, 0x8b, 0x57, 0x39,
+    };
+    uint8_t expected[1024], out[1024];
+    Keccak_state state;
+    size_t rate = bits == 128 ? 168 : 136;
+    void (*init)(Keccak_state*) = bits == 128 ? shake128_init : shake256_init;
+    void (*absorb)(Keccak_state*, const uint8_t*, size_t) = bits == 128 ? shake128_absorb : shake256_absorb;
+    void (*finalize)(Keccak_state*) = bits == 128 ? shake128_finalize : shake256_finalize;
+    void (*squeeze)(uint8_t*, size_t, Keccak_state*) = bits == 128 ? shake128_squeeze : shake256_squeeze;
+
+    if (bits == 128)
+        shake128(expected, sizeof(expected), message, sizeof(message));
+    else
+        shake256(expected, sizeof(expected), message, sizeof(message));
+    if (memcmp(expected, bits == 128 ? expected128 : expected256, 32))
+        return 1;
+
+    for (size_t chunk = 1; chunk <= 2*rate + 1; ++chunk) {
+        init(&state);
+        absorb(&state, message, sizeof(message));
+        finalize(&state);
+        memset(out, 0xa5, sizeof(out));
+        for (size_t offset = 0; offset < sizeof(out); ) {
+            size_t bytes = sizeof(out) - offset;
+            if (bytes > chunk)
+                bytes = chunk;
+            squeeze(out + offset, 0, &state);
+            squeeze(out + offset, bytes, &state);
+            offset += bytes;
+        }
+        if (memcmp(expected, out, sizeof(out))) {
+            fprintf(stderr, "SHAKE%d failed with squeeze chunk %zu\n", bits, chunk);
+            return 1;
+        }
+    }
+    for (size_t split = 0; split <= 2*rate + 1; ++split) {
+        init(&state);
+        absorb(&state, message, sizeof(message));
+        finalize(&state);
+        memset(out, 0xa5, sizeof(out));
+        squeeze(out, split, &state);
+        squeeze(out + split, sizeof(out) - split, &state);
+        if (memcmp(expected, out, sizeof(out)))
+            return 1;
+    }
+    return 0;
+}
+
 static int test_keccak(const char* digname) {
 
-    if (!strcmp(digname, "SHA3-512")) 
+    if (!strcmp(digname, "SHAKE128"))
+        return test_shake(128);
+    else if (!strcmp(digname, "SHAKE256"))
+        return test_shake(256);
+    else if (!strcmp(digname, "SHA3-512"))
         return test_sha3_512();
     else if(!strcmp(digname, "SHA3-256"))
         return test_sha3_256();

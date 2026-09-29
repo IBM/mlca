@@ -284,9 +284,7 @@ void *mlca_malloc(size_t size) {
 }
 
 void *mlca_calloc(size_t count, size_t size) {
-	void *ret = mlca_malloc(count * size);
-	memset(ret, 0, count * size);
-	return ret;
+	return calloc(count, size);
 }
 void mlca_secure_free(void *mem, size_t size) {
 	if (mem) {

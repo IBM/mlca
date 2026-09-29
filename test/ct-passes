@@ -17,13 +17,13 @@
    Kyber: Rejection sampling in encryption to produce public "A" matrix
    Memcheck:Cond
    ...
-   src:mlca.c:8619 # while ( ctr < KYB_N )
+   src:mlca.c:8623 # while ( ctr < KYB_N )
 }
 {
    Kyber: Rejection sampling in encryption to produce public "A" matrix
    Memcheck:Cond
    ...
-   src:qsc/crystals/mlca.c:8619 # while ( ctr < KYB_N )
+   src:qsc/crystals/mlca.c:8623 # while ( ctr < KYB_N )
 }
 # Kyber R3
 {
@@ -58,55 +58,55 @@
    Kyber: Rejection sampling in encryption to produce public "A" matrix
    Memcheck:Cond
    ...
-   src:mlca.c:8661 # while ( ctr < KYB_N )
+   src:mlca.c:8665 # while ( ctr < KYB_N )
 }
 {
    Kyber: Rejection sampling in encryption to produce public "A" matrix
    Memcheck:Cond
    ...
-   src:qsc/crystals/mlca.c:8661 # while ( ctr < KYB_N )
+   src:qsc/crystals/mlca.c:8665 # while ( ctr < KYB_N )
 }
 # ML-KEM
 {
    FIPS 203 public key input validation
    Memcheck:Cond
    ...
-   src:qsc/crystals/mlca.c:8912 # pkcheck
+   src:qsc/crystals/mlca.c:8916 # pkcheck
    # fun:mlkem_indcpa_enc
 }
 {
    FIPS 203 public key input validation
    Memcheck:Cond
    ...
-   src:qsc/crystals/mlca.c:8915 # pkcheck
+   src:qsc/crystals/mlca.c:8919 # pkcheck
    # fun:mlkem_indcpa_enc
 }
 {
    FIPS 203 public key input validation
    Memcheck:Cond
    ...
-   src:mlca.c:8919 # if (notvalid)
+   src:mlca.c:8923 # if (notvalid)
    # fun:mlkem_indcpa_enc
 }
 {
    FIPS 203 public key input validation
    Memcheck:Cond
    ...
-   src:qsc/crystals/mlca.c:8919 # if (notvalid)
+   src:qsc/crystals/mlca.c:8923 # if (notvalid)
    # fun:mlkem_indcpa_enc
 }
 {
    FIPS 203 hash check, after ct-comparison
    Memcheck:Cond
    ...
-   src:mlca.c:10143 # if ( kyb_verify ) .. goto
+   src:mlca.c:10157 # if ( kyb_verify ) .. goto
    # fun:kyb_kem2
 }
 {
    FIPS 203 hash check, after ct-comparison
    Memcheck:Cond
    ...
-   src:qsc/crystals/mlca.c:10143 # if ( kyb_verify ) .. goto
+   src:qsc/crystals/mlca.c:10157 # if ( kyb_verify ) .. goto
    # fun:kyb_kem2
 }
 {

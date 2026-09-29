@@ -6172,7 +6172,7 @@ static unsigned int dil_type2k(unsigned int type)
  * does not check 'type' validity; call only after verification
  *
  * currently, type is either  <round> 0 <K>  or <round> <K> <L>
- * K == L-1  for all variants of the first type
+ * L == K-1  for all variants of the first type
  *
  * expect this 'function' to be cheap, no need to cache etc.
  */
@@ -6181,7 +6181,7 @@ static unsigned int dil_type2l(unsigned int type)
     if ( type & 0xf0 ) {
         return type & 0x0f; /* <K> <L> */
     } else {
-        return ((type >> 4) & 0x0f) - 1; /* 0 <K> -> L == K-1 */
+        return (type & 0x0f) - 1; /* 0 <K> -> L == K-1 */
     }
 }
 
@@ -7891,10 +7891,14 @@ static size_t mldsa_sign(const void *pKey, unsigned char *sig, size_t siglen, co
                          size_t mlen, const uint8_t *sk, size_t skbytes, unsigned int type, void *rng) {
     int rc = 0;
     uint8_t coins[DIL_MLDSA_RNDBYTES];
-    if (rng != NULL)    // FIPS 204 hedged/randomized
-        randombytes(coins, DIL_MLDSA_RNDBYTES, rng);
-    else                // FIPS 204 deterministic
+    if (rng != NULL) {   // FIPS 204 hedged/randomized
+        if ( randombytes(coins, DIL_MLDSA_RNDBYTES, rng) != DIL_MLDSA_RNDBYTES ) {
+            MEMSET0_STRICT(coins, sizeof(coins));
+            return (size_t)MLCA_ERNG;
+        }
+    } else {            // FIPS 204 deterministic
         MEMSET0_STRICT(coins, DIL_MLDSA_RNDBYTES);
+    }
 
     rc = mldsa_sign_internal(pKey, sig, siglen, m, mlen, sk, skbytes, type, mldsa_ds_pure, 2, coins);
 
@@ -9908,8 +9912,10 @@ static int kyb_keygen(unsigned char *prv, size_t prvbytes, unsigned char *pub, s
 
     /* Add domain separation byte to seed: Alg 13 in FIPS203 // without the check it's ML-KEM-ipd */
     if (round == 4) {
-        if ( randombytes(coins, 2*KYB_SYMBYTES, rng) < KYB_SYMBYTES )
+        if ( randombytes(coins, 2*KYB_SYMBYTES, rng) != 2*KYB_SYMBYTES ) {
+            MEMSET0_STRICT(coins, sizeof(coins));
             return MLCA_ERNG;
+        }
     } else {
         if ( randombytes(coins, KYB_SYMBYTES, rng) < KYB_SYMBYTES )
             return MLCA_ERNG;
@@ -10142,6 +10148,9 @@ static int kyb_kem2(unsigned char *shared, size_t sbytes, const unsigned char *c
         return MLCA_ETOOSMALL;
     }
 
+    if ( !ct || (cbytes != ctxtb) )
+        return MLCA_EPARAM;
+
     if (round >= 4) {
         /* Hash check: required in FIPS 203 */
         kyb_hash_h(buf, prv + 384*k, 768*k + 32 - 384*k);
@@ -10275,8 +10284,8 @@ int __mlca_sign(const void *pKey, unsigned char *sig, size_t sbytes, const unsig
     int          v;
     unsigned int type = 0;
 
-    if ( !sig || !sbytes || !msg || !mbytes || !prv || !pbytes )
-        (void)0;
+    if ( !sig || !prv || (!msg && mbytes) )
+        return MLCA_EPARAM;
 
     if ( algid && ibytes ) {
         type = crs_oid2type(algid, ibytes);
@@ -10287,6 +10296,11 @@ int __mlca_sign(const void *pKey, unsigned char *sig, size_t sbytes, const unsig
     round = dil_type2round(type);
     if ( (round < 2) || (round > 4) )
         return 0;
+
+    if ( dil__prvbytes2type(pbytes) != type )
+        return MLCA_EKEYSIZE;
+    if ( sbytes < dil_signature_bytes(dil_type2k(type), dil_type2l(type), round) )
+        return MLCA_ETOOSMALL;
 
     if ( round == 2 ) {
         v = r2_sign(pKey, sig, sbytes, msg, mbytes, prv, pbytes, 0);
@@ -10326,8 +10340,8 @@ int __mlca_sign_internal(const void *pKey, unsigned char *sig, size_t sbytes, co
 
     uint8_t coins[DIL_MLDSA_RNDBYTES];
 
-    if ( !sig || !sbytes || !msg || !mbytes || !prv || !pbytes || !rng )
-        (void)0;
+    if ( !sig || !prv || !rng || (!msg && mbytes) )
+        return MLCA_EPARAM;
 
     if ( algid && ibytes ) {
         type = crs_oid2type(algid, ibytes);
@@ -10339,7 +10353,14 @@ int __mlca_sign_internal(const void *pKey, unsigned char *sig, size_t sbytes, co
     if ( round != 4 ) {
         return 0;
     } else {
-        randombytes(coins, DIL_MLDSA_RNDBYTES, rng);
+        if ( dil__prvbytes2type(pbytes) != type )
+            return MLCA_EKEYSIZE;
+        if ( sbytes < dil_signature_bytes(dil_type2k(type), dil_type2l(type), round) )
+            return MLCA_ETOOSMALL;
+        if ( randombytes(coins, DIL_MLDSA_RNDBYTES, rng) != DIL_MLDSA_RNDBYTES ) {
+            MEMSET0_STRICT(coins, sizeof(coins));
+            return MLCA_ERNG;
+        }
 
         v = mldsa_sign_internal(pKey, sig, sbytes, msg, mbytes, prv, pbytes, 0, 0, 0, coins);
     }

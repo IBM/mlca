@@ -309,6 +309,9 @@ static void keccak_sponge_squeeze_update(Keccak_state* state, size_t Ni, uint8_t
     for (; i < state->idx + fb_bytes; ++i)
         *out++ = A[i / 8] >> 8 * (i % 8);
 
+    if (i == rBytes)
+        i = 0;
+
     /** Full blocks */
     for (size_t j = 0; j < fl_blocks; ++j) {
         keccak_permute(state);

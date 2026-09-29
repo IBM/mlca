@@ -10,6 +10,15 @@ add_executable(mlca_test_keccak test_keccak.c test_extras.c)
 
 target_link_libraries(mlca_test_keccak mlca mlcaencoding)
 
+add_executable(mlca_test_errors test_errors.c)
+target_link_libraries(mlca_test_errors mlca mlcaencoding)
+foreach(suite signing decapsulation rng encoding allocation)
+    add_test(NAME errors_${suite} COMMAND mlca_test_errors ${suite})
+endforeach()
+set_tests_properties(errors_allocation PROPERTIES ENVIRONMENT "ASAN_OPTIONS=allocator_may_return_null=1")
+add_test(SHAKE128 mlca_test_keccak SHAKE128)
+add_test(SHAKE256 mlca_test_keccak SHAKE256)
+
 if (1)
 add_test(Kyber768_R2-self mlca_test Kyber768_R2 self)
 add_test(Kyber768_R2-self_encodings mlca_test Kyber768_R2 self_encodings)

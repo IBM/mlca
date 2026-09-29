@@ -82,7 +82,7 @@ static MLCA_RC dilithium_sign(const mlca_ctx_t *ctx, unsigned char *sig, size_t 
 		*siglen = rc;
 		return MLCA_OK;
 	} else {
-		return MLCA_GEN;
+		return rc < 0 ? rc : MLCA_GEN;
 	}
 }
 
@@ -109,7 +109,7 @@ static MLCA_RC mldsa_sign(const mlca_ctx_t *ctx, unsigned char *sig, size_t *sig
 		*siglen = rc;
 		return MLCA_OK;
 	} else {
-		return MLCA_GEN;
+		return rc < 0 ? rc : MLCA_GEN;
 	}
 }
 
@@ -125,7 +125,7 @@ static MLCA_RC mldsa_sign_internal(const mlca_ctx_t *ctx, unsigned char *sig, si
 		*siglen = rc;
 		return MLCA_OK;
 	} else {
-		return MLCA_GEN;
+		return rc < 0 ? rc : MLCA_GEN;
 	}
 }
 
